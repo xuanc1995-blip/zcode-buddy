@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourname/zcode-buddy"
+    "url": "https://github.com/xuanc1995-blip/zcode-buddy"
   },
   "main": "electron/main.cjs",
   "scripts": {
