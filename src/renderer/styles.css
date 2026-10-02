@@ -189,6 +189,8 @@ body {
 .hrow { display: flex; align-items: center; gap: 8px; color: var(--text-dim); font-size: 13px; }
 .hrow svg { color: var(--accent); flex-shrink: 0; }
 .hero-models { margin-top: 6px; display: flex; flex-direction: column; gap: 7px; max-width: 460px; }
+.card-models { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+.card-models .model-row { grid-template-columns: 112px 1fr auto; }
 .model-row { display: grid; grid-template-columns: 130px 1fr auto; align-items: center; gap: 10px; font-size: 12px; }
 .model-name { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .model-bar { height: 6px; background: var(--ring-track); border-radius: 99px; overflow: hidden; }

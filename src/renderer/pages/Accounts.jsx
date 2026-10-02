@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Sparkline } from '../components/charts.jsx';
 import Avatar from '../components/Avatar.jsx';
 import {
   IconSave, IconRefresh, IconUndo, IconTrash, IconEdit, IconSwitch, IconCheck, IconAlert, IconFolder,
@@ -128,7 +127,20 @@ export default function Accounts({ state, accounts, busy, run, setConfirm }) {
                         ? <>剩余 <b>{fmtNum(q.remaining)}</b> / {fmtNum(q.total)}{q.percentUsed != null && `（已用 ${q.percentUsed.toFixed(1)}%）`}</>
                         : <>总量 <b>{fmtNum(q.total)}</b>（已用未知）</>}
                     </div>
-                    <Sparkline history={a.history} width={240} height={40} />
+                    {q.items?.length > 0 && (
+                      <div className="card-models">
+                        {q.items.map((it, i) => (
+                          <div key={i} className="model-row">
+                            <span className="model-name">{it.name}</span>
+                            <div className="model-bar"><div
+                              className="model-fill"
+                              style={{ width: it.total ? `${Math.max(0, Math.min(100, ((it.remaining ?? 0) / it.total) * 100))}%` : '0%' }}
+                            /></div>
+                            <span className="model-num">{fmtNum(it.remaining)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
