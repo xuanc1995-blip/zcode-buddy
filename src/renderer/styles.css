@@ -32,6 +32,10 @@
   --shadow: 0 14px 34px -18px rgba(40, 40, 90, 0.25);
   --ring-track: rgba(20, 20, 40, 0.08);
 }
+:root[data-theme='light'] .btn.ghost:hover:not(:disabled) { background: rgba(20, 20, 40, 0.04); }
+:root[data-theme='light'] .toast { border-color: var(--accent); }
+:root[data-theme='light'] .avatar-ring { outline-color: rgba(20, 20, 40, 0.12); }
+:root[data-theme='light'] .nav-item.active::before { opacity: .8; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -105,9 +109,17 @@ body {
 .status-pill.off .dot { background: var(--bad); }
 .version { font-size: 11px; color: var(--text-faint); padding-left: 4px; }
 
-.content { flex: 1; overflow-y: auto; padding: 26px 30px; }
+.content { flex: 1; overflow-y: auto; padding: 6px 30px 26px; }
 .content::-webkit-scrollbar { width: 10px; }
 .content::-webkit-scrollbar-thumb { background: rgba(128, 128, 160, 0.25); border-radius: 5px; }
+
+/* 无边框窗口：自定义标题栏拖拽区（右上角是系统 overlay 三键） */
+.main-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.titlebar {
+  height: 34px; flex-shrink: 0;
+  -webkit-app-region: drag;
+  user-select: none;
+}
 
 /* ============ 页面通用 ============ */
 .page { display: flex; flex-direction: column; gap: 18px; max-width: 980px; margin: 0 auto; animation: fadeUp .25s ease; }
@@ -137,6 +149,31 @@ body {
 .btn.ghost.danger { background: transparent; color: var(--bad); border-color: transparent; }
 .btn.ghost.danger:hover:not(:disabled) { border-color: var(--bad); }
 
+/* ============ 头像 / 热键标签 / 今日消耗 ============ */
+.avatar {
+  border-radius: 30%; display: grid; place-items: center;
+  color: #fff; font-weight: 700; letter-spacing: 0.5px; flex-shrink: 0;
+  user-select: none;
+}
+.avatar-ring { outline: 2px solid rgba(255, 255, 255, 0.18); outline-offset: 2px; }
+.who-line { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.who-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hero-who { display: flex; align-items: center; gap: 12px; }
+.hero-name-line { display: flex; align-items: center; gap: 9px; }
+.hotkey {
+  font-family: 'Segoe UI', sans-serif; font-size: 10px; color: var(--text-dim);
+  border: 1px solid var(--panel-line); border-radius: 5px; padding: 2px 6px;
+  background: var(--panel-solid);
+}
+.today-used { color: var(--warn); }
+.today-chip {
+  background: rgba(245, 166, 35, 0.13); color: var(--warn);
+  font-size: 11px; padding: 2px 8px; border-radius: 999px;
+}
+
+/* 卡片/快捷卡入场动画 */
+.enter { animation: fadeUp .35s cubic-bezier(.22,.9,.35,1) both; }
+
 /* ============ 仪表盘 ============ */
 .hero {
   display: flex; align-items: center; gap: 30px;
@@ -164,6 +201,8 @@ body {
 .hero-empty .btn { margin-top: 8px; }
 
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 980px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .stats { grid-template-columns: 1fr; } }
 .stat {
   background: var(--panel); border: 1px solid var(--panel-line); border-radius: 14px;
   padding: 14px 18px; display: flex; flex-direction: column; gap: 3px; backdrop-filter: blur(14px);
@@ -187,6 +226,7 @@ body {
 .quick-card:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-2px); }
 .quick-card:disabled { opacity: .5; cursor: not-allowed; }
 .quick-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.quick-who { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .quick-name { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .quick-top svg { color: var(--accent); flex-shrink: 0; }
 .quick-quota { font-size: 12px; color: var(--text-dim); }
@@ -237,19 +277,30 @@ body {
 
 .spark { display: block; border-radius: 8px; }
 .spark.empty { font-size: 11px; color: var(--text-faint); display: flex; align-items: center; height: 40px; }
+.spark-wrap { position: relative; width: fit-content; cursor: crosshair; }
 .spark-stop-a { stop-color: rgba(108, 123, 255, 0.28); }
 .spark-stop-b { stop-color: rgba(108, 123, 255, 0); }
 .spark-line { stroke: var(--accent); stroke-width: 2; }
 .spark-line.down { stroke: var(--ok); }
 .spark-dot { fill: var(--accent); }
 .spark-dot.down { fill: var(--ok); }
+.spark-cursor { stroke: var(--panel-line); stroke-width: 1; stroke-dasharray: 3 3; }
+.spark-hover-dot { fill: var(--text); stroke: var(--accent); stroke-width: 2; }
+.spark-tip {
+  position: absolute; z-index: 5; pointer-events: none;
+  background: var(--panel-solid); border: 1px solid var(--panel-line); border-radius: 9px;
+  padding: 6px 10px; display: flex; flex-direction: column; gap: 1px;
+  box-shadow: var(--shadow); white-space: nowrap;
+}
+.spark-tip b { font-size: 12px; font-variant-numeric: tabular-nums; }
+.spark-tip span { font-size: 10px; color: var(--text-faint); }
 
 .card-foot { display: flex; justify-content: space-between; align-items: center; margin-top: auto; gap: 8px; }
 .time { color: var(--text-faint); font-size: 11px; }
 .ops { display: flex; gap: 6px; }
 
 /* ============ 环形表 ============ */
-.ring-wrap { position: relative; display: grid; place-items: center; flex-shrink: 0; }
+.ring-wrap { position: relative; display: grid; place-items: center; flex-shrink: 0; filter: drop-shadow(0 10px 24px rgba(108, 123, 255, 0.25)); }
 .ring-svg { transform: rotate(0deg); }
 .ring-track { fill: none; stroke: var(--ring-track); }
 .ring-fill { fill: none; transition: stroke-dashoffset .6s cubic-bezier(.22,.9,.35,1); }

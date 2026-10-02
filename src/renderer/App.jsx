@@ -99,10 +99,13 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="content">
-        {page === 'dashboard' && <Dashboard {...ctx} />}
-        {page === 'accounts' && <Accounts {...ctx} />}
-        {page === 'settings' && <SettingsPage {...ctx} />}
+      <main className="main-col">
+        <div className="titlebar" />
+        <div className="content">
+          {page === 'dashboard' && <Dashboard {...ctx} />}
+          {page === 'accounts' && <Accounts {...ctx} />}
+          {page === 'settings' && <SettingsPage {...ctx} />}
+        </div>
       </main>
 
       {confirm && (

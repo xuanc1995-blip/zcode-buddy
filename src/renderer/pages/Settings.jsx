@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  IconMoon, IconSun, IconDownload, IconUpload, IconFolder, IconMonitor, IconKey, IconInfo, IconHeart,
+  IconMoon, IconSun, IconDownload, IconUpload, IconFolder, IconMonitor, IconKey, IconInfo, IconHeart, IconSwitch,
 } from '../components/icons.jsx';
 
-export default function SettingsPage({ state, settings, setSettings, showToast, busy, run }) {
-  if (!settings) return null;
+export default function SettingsPage({ state, settings, setSettings, busy, run, showToast }) {
+  // hooks 必须在任何条件 return 之前调用
   const [draft, setDraft] = useState(settings);
   const [pass, setPass] = useState('');
+  useEffect(() => { if (settings) setDraft(settings); }, [settings]);
+
+  if (!settings || !draft) return null;
 
   const save = async (patch) => {
     const next = await window.buddy.setSettings(patch);
@@ -29,7 +32,7 @@ export default function SettingsPage({ state, settings, setSettings, showToast, 
       <header className="page-head">
         <div>
           <h1>设置</h1>
-          <p className="page-sub">提醒、通用与数据管理</p>
+          <p className="page-sub">提醒、切换策略、通用与数据管理</p>
         </div>
       </header>
 
@@ -55,10 +58,28 @@ export default function SettingsPage({ state, settings, setSettings, showToast, 
         </label>
         <label className="field row">
           <input
-            type="checkbox" checked={draft.autoStartPolling}
+            type="checkbox" checked={!!draft.autoStartPolling}
             onChange={(e) => save({ autoStartPolling: e.target.checked })}
           />
           <span>启动时立即进行一轮额度刷新</span>
+        </label>
+      </section>
+
+      <section className="panel">
+        <h2><IconSwitch size={15} /> 切换策略</h2>
+        <label className="field row">
+          <input
+            type="checkbox" checked={!!draft.autoSwitch}
+            onChange={(e) => save({ autoSwitch: e.target.checked })}
+          />
+          <span>自动切换：轮询发现当前账号剩余低于阈值时，自动切到剩余最多的账号（会关闭并重启 ZCode，并发通知）</span>
+        </label>
+        <label className="field row">
+          <input
+            type="checkbox" checked={!!draft.globalHotkeys}
+            onChange={(e) => save({ globalHotkeys: e.target.checked })}
+          />
+          <span>全局快捷键：<kbd className="hotkey">Ctrl+Alt+1~9</kbd> 切到第 N 个账号（应用在后台也生效）</span>
         </label>
       </section>
 

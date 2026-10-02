@@ -2,7 +2,7 @@
 /**
  * Electron 主进程：窗口、托盘、IPC（把 core 能力暴露给渲染进程）、低额度轮询提醒。
  */
-const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, nativeImage, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -26,7 +26,7 @@ if (!app.isPackaged) {
 // ---------------------------------------------------------------------------
 // 设置（userData/settings.json）
 // ---------------------------------------------------------------------------
-const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'dark' };
+const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'dark', autoSwitch: false, globalHotkeys: false };
 
 function settingsFile() {
   return path.join(app.getPath('userData'), 'settings.json');
@@ -73,6 +73,31 @@ async function pollQuotaOnce({ notify = true } = {}) {
     await new Promise((r) => setTimeout(r, 600));
   }
   if (notify) checkLowQuotaAndNotify(results, settings);
+
+  // 自动切换策略：当前账号剩余低于阈值时，切到剩余最多的其他账号（需开启且 ZCode 运行中）
+  if (notify && settings.autoSwitch) {
+    try {
+      const curFp = fingerprint.extractCurrent();
+      const cur = results.find((r) => r.account.id === curFp?.shortId);
+      const curRemainingPct = cur?.info?.percentUsed != null ? 100 - cur.info.percentUsed : null;
+      if (curRemainingPct != null && curRemainingPct < settings.lowQuotaThreshold && switcher.isZCodeRunning()) {
+        const best = results
+          .filter((r) => r.account.id !== cur.account.id && r.info?.remaining != null
+            && (r.info.percentUsed == null || 100 - r.info.percentUsed >= settings.lowQuotaThreshold))
+          .sort((a, b) => b.info.remaining - a.info.remaining)[0];
+        if (best) {
+          await switchToId(best.account.id);
+          if (Notification.isSupported()) {
+            new Notification({
+              title: '已自动切换账号',
+              body: `「${cur.account.name}」剩余不足 ${settings.lowQuotaThreshold}%，已切换到「${best.account.name}」`,
+            }).show();
+          }
+        }
+      }
+    } catch (_) { /* 自动切换失败不影响轮询 */ }
+  }
+
   broadcast('quota:updated');
   return results;
 }
@@ -140,7 +165,11 @@ function registerIpc() {
 
   ipcMain.handle('accounts:list', () => store.listAccounts());
 
-  ipcMain.handle('account:capture', (_e, name) => store.captureCurrent({ name: name || undefined }));
+  ipcMain.handle('account:capture', (_e, name) => {
+    const r = store.captureCurrent({ name: name || undefined });
+    applyGlobalHotkeys(loadSettings().globalHotkeys);
+    return r;
+  });
 
   ipcMain.handle('account:use', async (_e, id) => {
     const account = store.findAccount(String(id || ''));
@@ -155,7 +184,11 @@ function registerIpc() {
   });
 
   ipcMain.handle('account:rename', (_e, { id, name }) => store.renameAccount(id, name));
-  ipcMain.handle('account:delete', (_e, id) => store.deleteAccount(id));
+  ipcMain.handle('account:delete', (_e, id) => {
+    const r = store.deleteAccount(id);
+    applyGlobalHotkeys(loadSettings().globalHotkeys);
+    return r;
+  });
 
   ipcMain.handle('quota:refresh', async (_e, target) => {
     if (target === 'current' || !target) {
@@ -192,7 +225,7 @@ function registerIpc() {
 
   ipcMain.handle('zcode:launch', () => switcher.launchZCode());
 
-  ipcMain.handle('settings:get', () => loadSettings());
+  ipcMain.handle('settings:get', () => readSettingsForRenderer());
   ipcMain.handle('settings:set', (_e, patch) => {
     const clean = { ...(patch || {}) };
     // 自启设置走系统接口，不落 settings.json
@@ -203,6 +236,7 @@ function registerIpc() {
     const next = saveSettings(clean);
     startPolling();
     applyTheme(next.theme);
+    if (typeof clean.globalHotkeys === 'boolean') applyGlobalHotkeys(next.globalHotkeys);
     return readSettingsForRenderer();
   });
 
@@ -242,9 +276,24 @@ function readSettingsForRenderer() {
 }
 
 function applyTheme(theme) {
+  const t = theme || 'dark';
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('theme:changed', theme || 'dark');
+    mainWindow.webContents.send('theme:changed', t);
+    try {
+      mainWindow.setTitleBarOverlay({ color: '#00000000', symbolColor: t === 'light' ? '#1b1c2e' : '#ecedf5', height: 34 });
+    } catch (_) {}
   }
+}
+
+/** 全局快捷键：Ctrl+Alt+1~9 切到第 N 个账号（按账号列表顺序） */
+function applyGlobalHotkeys(enabled) {
+  try { globalShortcut.unregisterAll(); } catch (_) {}
+  if (!enabled) return;
+  store.listAccounts().slice(0, 9).forEach((a, i) => {
+    try {
+      globalShortcut.register(`CommandOrControl+Alt+${i + 1}`, () => switchToId(a.id).catch(() => {}));
+    } catch (_) {}
+  });
 }
 
 function broadcast(channel, payload) {
@@ -263,13 +312,18 @@ function showMainWindow() {
 }
 
 function createWindow() {
+  const saved = loadSettings().windowBounds;
   mainWindow = new BrowserWindow({
-    width: 920,
-    height: 680,
-    minWidth: 720,
-    minHeight: 520,
+    width: saved?.width ?? 1060,
+    height: saved?.height ?? 700,
+    x: saved?.x,
+    y: saved?.y,
+    minWidth: 880,
+    minHeight: 580,
     autoHideMenuBar: true,
     backgroundColor: '#101014',
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: '#00000000', symbolColor: '#ecedf5', height: 34 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -277,6 +331,18 @@ function createWindow() {
     },
   });
   mainWindow.setMenuBarVisibility(false);
+
+  // 记忆窗口位置尺寸（防抖落盘）
+  let boundsTimer = null;
+  const saveBounds = () => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMinimized() && !mainWindow.isFullScreen()) {
+        saveSettings({ windowBounds: mainWindow.getNormalBounds() });
+      }
+    } catch (_) {}
+  };
+  mainWindow.on('resize', () => { clearTimeout(boundsTimer); boundsTimer = setTimeout(saveBounds, 600); });
+  mainWindow.on('move', () => { clearTimeout(boundsTimer); boundsTimer = setTimeout(saveBounds, 600); });
 
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
@@ -355,8 +421,9 @@ if (!gotLock) {
     createWindow();
     createTray();
     if (loadSettings().autoStartPolling) startPolling();
+    applyGlobalHotkeys(loadSettings().globalHotkeys);
   });
 
-  app.on('before-quit', () => { quitting = true; stopPolling(); });
+  app.on('before-quit', () => { quitting = true; stopPolling(); try { globalShortcut.unregisterAll(); } catch (_) {} });
   app.on('window-all-closed', () => { /* 托盘常驻，不退出 */ });
 }

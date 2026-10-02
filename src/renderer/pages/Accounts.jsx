@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Sparkline } from '../components/charts.jsx';
+import Avatar from '../components/Avatar.jsx';
 import {
   IconSave, IconRefresh, IconUndo, IconTrash, IconEdit, IconSwitch, IconCheck, IconAlert, IconFolder,
 } from '../components/icons.jsx';
-import { fmtNum, fmtDate, fmtExpiry } from '../util.js';
+import { fmtNum, fmtDate, fmtExpiry, usedToday } from '../util.js';
 
-export default function Accounts({ state, accounts, busy, run, showToast, setConfirm, reload }) {
+export default function Accounts({ state, accounts, busy, run, setConfirm }) {
   const [naming, setNaming] = useState(null);
   const [nameDraft, setNamingDraft] = useState('');
   const currentId = state?.current?.shortId;
@@ -76,14 +77,15 @@ export default function Accounts({ state, accounts, busy, run, showToast, setCon
         </div>
       ) : (
         <div className="card-grid">
-          {accounts.map((a) => {
+          {accounts.map((a, i) => {
             const isCurrent = a.id === currentId;
             const q = a.quota;
             const pct = q?.percentUsed != null ? 100 - q.percentUsed : null;
             const critical = pct != null && pct < 5;
             const low = pct != null && pct < 15 && !critical;
+            const today = usedToday(a.history);
             return (
-              <div key={a.id} className={`card ${isCurrent ? 'current' : ''} ${critical ? 'critical' : ''}`}>
+              <div key={a.id} className={`card enter ${isCurrent ? 'current' : ''} ${critical ? 'critical' : ''}`} style={{ animationDelay: `${i * 45}ms` }}>
                 <div className="card-head">
                   {naming === a.id ? (
                     <input
@@ -96,8 +98,13 @@ export default function Accounts({ state, accounts, busy, run, showToast, setCon
                     />
                   ) : (
                     <div className="who">
-                      <span className="name">{a.name}</span>
-                      <span className="email">{a.email || `[${a.id}]`}</span>
+                      <div className="who-line">
+                        <Avatar name={a.name} id={a.id} size={34} />
+                        <div className="who-text">
+                          <span className="name">{a.name}</span>
+                          <span className="email">{a.email || `[${a.id}]`}</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                   <div className="badges">
@@ -110,7 +117,7 @@ export default function Accounts({ state, accounts, busy, run, showToast, setCon
                 <div className="meta">
                   <span>{q?.plan?.tier || '—'}</span>
                   {q?.plan?.expiresAt && <span>· {fmtExpiry(q.plan.expiresAt)}</span>}
-                  <span className="meta-id">[{a.id}]</span>
+                  {today != null && today > 0 && <span className="today-chip">今日消耗 {fmtNum(today)}</span>}
                 </div>
 
                 {q && !q.isEmpty && (
@@ -143,8 +150,6 @@ export default function Accounts({ state, accounts, busy, run, showToast, setCon
           })}
         </div>
       )}
-      {showToast && null}
-      {reload && null}
     </div>
   );
 }

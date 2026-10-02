@@ -1,7 +1,18 @@
 import React from 'react';
 import { RingGauge, Sparkline } from '../components/charts.jsx';
+import Avatar from '../components/Avatar.jsx';
 import { IconZap, IconSwitch, IconAlert, IconClock, IconRefresh, IconCheck } from '../components/icons.jsx';
-import { fmtNum, fmtDate, fmtExpiry, usedToday } from '../util.js';
+import { fmtNum, fmtDate, fmtExpiry, usedToday, useCountUp } from '../util.js';
+
+function Stat({ value, label, warn, formatter = fmtNum }) {
+  const animated = useCountUp(value);
+  return (
+    <div className={`stat ${warn ? 'warn' : ''}`}>
+      <span className="stat-num">{animated == null ? '—' : formatter(Math.round(animated))}</span>
+      <span className="stat-label">{label}</span>
+    </div>
+  );
+}
 
 export default function Dashboard({ state, accounts, settings, busy, run, setConfirm, goPage }) {
   const currentId = state?.current?.shortId;
@@ -15,6 +26,8 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
   const lowAccounts = withData.filter((a) => 100 - a.quota.percentUsed < threshold);
   const expiredAccounts = accounts.filter((a) => a.tokenStatus === 'expired');
   const todayUsed = usedToday(current?.history);
+  const remainingPct = current?.quota?.percentUsed != null ? 100 - current.quota.percentUsed : null;
+  const animatedPct = useCountUp(remainingPct == null ? null : Math.round(remainingPct));
 
   const doUse = (account) => setConfirm({
     title: `切换到「${account.name}」？`,
@@ -39,19 +52,26 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
       <section className="hero">
         {current ? (
           <>
-            <RingGauge
-              size={176}
-              percent={current.quota?.percentUsed != null ? 100 - current.quota.percentUsed : null}
-              label="剩余额度"
-              sub={current.quota?.remaining != null ? fmtNum(current.quota.remaining) : ''}
-            />
+            <div className="hero-ring">
+              <RingGauge
+                size={176}
+                percent={remainingPct}
+                label="剩余额度"
+                sub={current.quota?.remaining != null ? fmtNum(current.quota.remaining) : ''}
+              />
+            </div>
             <div className="hero-info">
               <div className="hero-title">
-                <span className="hero-name">{current.name}</span>
-                <span className="badge">当前</span>
-                {current.tokenStatus === 'expired' && <span className="badge warn"><IconAlert size={11} /> Token 过期</span>}
+                <Avatar name={current.name} id={current.id} size={44} />
+                <div className="hero-who">
+                  <div className="hero-name-line">
+                    <span className="hero-name">{current.name}</span>
+                    <span className="badge">当前</span>
+                    {current.tokenStatus === 'expired' && <span className="badge warn"><IconAlert size={11} /> Token 过期</span>}
+                  </div>
+                  {current.email && <div className="hero-email">{current.email}</div>}
+                </div>
               </div>
-              {current.email && <div className="hero-email">{current.email}</div>}
               <div className="hero-rows">
                 <div className="hrow"><IconZap size={14} /><span>套餐：{current.quota?.plan?.tier || current.quota?.plan?.planName || '—'}</span></div>
                 <div className="hrow"><IconClock size={14} /><span>
@@ -61,7 +81,7 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
                 </span></div>
                 <div className="hrow"><IconCheck size={14} /><span>
                   总量 {fmtNum(current.quota?.total)} · 已用 {fmtNum(current.quota?.used)}
-                  {todayUsed != null && <> · 今日消耗 {fmtNum(todayUsed)}</>}
+                  {todayUsed != null && <> · 今日消耗 <b className="today-used">{fmtNum(todayUsed)}</b></>}
                 </span></div>
               </div>
               {current.quota && !current.quota.isEmpty && (
@@ -80,8 +100,8 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
               )}
             </div>
             <div className="hero-trend">
-              <span className="sec-label">近 60 次刷新 · 剩余量趋势</span>
-              <Sparkline history={current.history} width={220} height={56} />
+              <span className="sec-label">近 60 次刷新 · 剩余量趋势（悬停查看）</span>
+              <Sparkline history={current.history} width={230} height={58} />
             </div>
           </>
         ) : (
@@ -96,22 +116,10 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
 
       {/* 汇总统计 */}
       <section className="stats">
-        <div className="stat">
-          <span className="stat-num">{accounts.length}</span>
-          <span className="stat-label">账号总数</span>
-        </div>
-        <div className="stat">
-          <span className="stat-num">{fmtNum(totalRemaining)}</span>
-          <span className="stat-label">全部剩余额度</span>
-        </div>
-        <div className="stat">
-          <span className="stat-num">{fmtNum(totalUsed)}</span>
-          <span className="stat-label">累计已用</span>
-        </div>
-        <div className={`stat ${lowAccounts.length ? 'warn' : ''}`}>
-          <span className="stat-num">{lowAccounts.length}</span>
-          <span className="stat-label">低额度账号（&lt;{threshold}%）</span>
-        </div>
+        <Stat value={accounts.length} label="账号总数" formatter={(v) => String(v)} />
+        <Stat value={totalRemaining} label="全部剩余额度" />
+        <Stat value={totalUsed} label="累计已用" />
+        <Stat value={lowAccounts.length} label={`低额度账号（<${threshold}%）`} warn={lowAccounts.length > 0} formatter={(v) => String(v)} />
       </section>
 
       {/* 告警与快捷切换 */}
@@ -127,15 +135,19 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
 
       {others.length > 0 && (
         <section>
-          <span className="sec-label">快捷切换</span>
+          <span className="sec-label">快捷切换{settings?.globalHotkeys ? '（全局快捷键 Ctrl+Alt+1~9）' : ''}</span>
           <div className="quick-grid">
-            {others.map((a) => {
+            {others.map((a, i) => {
               const pct = a.quota?.percentUsed != null ? 100 - a.quota.percentUsed : null;
               return (
-                <button key={a.id} className="quick-card" disabled={busy} onClick={() => doUse(a)}>
+                <button key={a.id} className="quick-card enter" style={{ animationDelay: `${i * 40}ms` }} disabled={busy} onClick={() => doUse(a)}>
                   <div className="quick-top">
-                    <span className="quick-name">{a.name}</span>
-                    <IconSwitch size={14} />
+                    <span className="quick-who">
+                      <Avatar name={a.name} id={a.id} size={26} />
+                      <span className="quick-name">{a.name}</span>
+                    </span>
+                    {settings?.globalHotkeys && <kbd className="hotkey">Ctrl+Alt+{i + 1}</kbd>}
+                    {!settings?.globalHotkeys && <IconSwitch size={14} />}
                   </div>
                   <div className="quick-quota">
                     {pct != null ? <>剩余 <b>{pct.toFixed(0)}%</b> · {fmtNum(a.quota.remaining)}</> : '额度未知'}
@@ -147,6 +159,7 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
           </div>
         </section>
       )}
+      {animatedPct == null && null}
     </div>
   );
 }
