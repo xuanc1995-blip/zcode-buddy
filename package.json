@@ -1,6 +1,6 @@
 {
   "name": "zcode-buddy",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "ZCode 多账号快捷切换与额度管理桌面工具 / Account switcher & quota dashboard for ZCode",
   "author": "zcode-buddy contributors",
   "license": "MIT",
@@ -13,7 +13,7 @@
     "dev:vite": "vite",
     "dev:electron": "electron .",
     "build:renderer": "vite build",
-    "build": "vite build && electron-builder --win nsis",
+    "build": "vite build && electron-builder --win",
     "icon": "node scripts/gen-icon.js",
     "cli": "node core/cli.js"
   },

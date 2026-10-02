@@ -35,7 +35,12 @@
 
 ## 安装
 
-从 [Releases](../../releases) 下载 `ZCode Buddy Setup x.x.x.exe` 安装，或使用绿色版。
+从 [Releases](../../releases) 下载：
+
+- **安装版** `ZCode Buddy Setup x.x.x.exe`：常规安装，自动创建桌面快捷方式
+- **便携版** `ZCode Buddy-x.x.x-portable.exe`：免安装，双击即用（首次启动需解压，稍慢几秒）
+
+两者的账号数据都存在 `%APPDATA%\zcode-buddy\accounts`，可以混用互换。
 
 要求：本机已安装并登录 [ZCode 客户端](https://zcode.z.ai)（Windows）。
 
