@@ -1,7 +1,7 @@
 import React from 'react';
-import { RingGauge, Sparkline } from '../components/charts.jsx';
+import { RingGauge, UsageBars } from '../components/charts.jsx';
 import Avatar from '../components/Avatar.jsx';
-import { IconZap, IconSwitch, IconAlert, IconClock, IconRefresh, IconCheck } from '../components/icons.jsx';
+import { IconZap, IconSwitch, IconAlert, IconClock, IconRefresh, IconLayers, IconFlame, IconCalendar } from '../components/icons.jsx';
 import { fmtNum, fmtDate, fmtExpiry, usedToday, useCountUp } from '../util.js';
 
 function Stat({ value, label, warn, formatter = fmtNum }) {
@@ -79,10 +79,9 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
                     ? <>套餐 {fmtExpiry(current.quota.plan.expiresAt)}（{fmtDate(current.quota.plan.expiresAt)}）</>
                     : '套餐到期：—'}
                 </span></div>
-                <div className="hrow"><IconCheck size={14} /><span>
-                  总量 {fmtNum(current.quota?.total)} · 已用 {fmtNum(current.quota?.used)}
-                  {todayUsed != null && <> · 今日消耗 <b className="today-used">{fmtNum(todayUsed)}</b></>}
-                </span></div>
+                <div className="hrow"><IconLayers size={14} /><span>总量 <b>{fmtNum(current.quota?.total)}</b></span></div>
+                <div className="hrow"><IconFlame size={14} /><span>已用 <b>{fmtNum(current.quota?.used)}</b>{current.quota?.percentUsed != null && `（${current.quota.percentUsed.toFixed(1)}%）`}</span></div>
+                <div className="hrow"><IconCalendar size={14} /><span>今日消耗 <b className="today-used">{todayUsed != null ? fmtNum(todayUsed) : '—'}</b></span></div>
               </div>
               {current.quota && !current.quota.isEmpty && (
                 <div className="hero-models">
@@ -100,8 +99,8 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
               )}
             </div>
             <div className="hero-trend">
-              <span className="sec-label">近 60 次刷新 · 剩余量趋势（悬停查看）</span>
-              <Sparkline history={current.history} width={230} height={58} />
+              <span className="sec-label">消耗趋势 · 每根柱 = 两次刷新间的用量（悬停查看）</span>
+              <UsageBars history={current.history} width={230} height={76} />
             </div>
           </>
         ) : (

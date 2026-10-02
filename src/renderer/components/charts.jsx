@@ -2,81 +2,89 @@ import React, { useMemo, useRef, useState } from 'react';
 import { fmtNum } from '../util.js';
 
 /**
- * 额度趋势 sparkline：hover 显示该点的时间与剩余量。
- * history=[{t,remaining}]，取最近 60 点。
+ * 消耗柱状图：每根柱 = 两次刷新之间的用量（remaining 差值）。
+ * history=[{t,remaining}]，取最近 maxBars 点，悬停显示时间与消耗量。
  */
-export function Sparkline({ history, width = 200, height = 44 }) {
+export function UsageBars({ history, width = 230, height = 72, maxBars = 28 }) {
   const wrapRef = useRef(null);
-  const [hover, setHover] = useState(null); // {x, y, point}
+  const [hover, setHover] = useState(null); // {x, y, w, h, bar}
 
-  const pts = useMemo(
-    () => (history || []).filter((h) => h && h.remaining != null).slice(-60),
-    [history],
-  );
+  const bars = useMemo(() => {
+    const pts = (history || []).filter((h) => h && h.remaining != null).slice(-maxBars);
+    const out = [];
+    for (let i = 1; i < pts.length; i++) {
+      const prev = pts[i - 1].remaining ?? pts[i].remaining;
+      out.push({ t: pts[i].t, used: Math.max(0, prev - pts[i].remaining) });
+    }
+    return out;
+  }, [history, maxBars]);
+
+  const PAD_BOTTOM = 3;
+  const gap = 2;
 
   const geom = useMemo(() => {
-    if (pts.length < 2) return null;
-    const values = pts.map((h) => h.remaining);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const span = max - min || 1;
-    const pad = 4;
-    const step = (width - pad * 2) / (pts.length - 1);
-    const xy = pts.map((h, i) => ({
-      x: pad + i * step,
-      y: height - pad - ((h.remaining - min) / span) * (height - pad * 2),
-      point: h,
-    }));
-    const line = xy.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-    const area = `${line} L${xy[xy.length - 1].x.toFixed(1)} ${height - pad} L${xy[0].x.toFixed(1)} ${height - pad} Z`;
-    return { xy, line, area, min, max };
-  }, [pts, width, height]);
+    if (bars.length < 2) return null;
+    const max = Math.max(...bars.map((b) => b.used), 1);
+    const barW = Math.max(3, Math.floor((width - (bars.length - 1) * gap) / bars.length));
+    const totalW = bars.length * barW + (bars.length - 1) * gap;
+    const x0 = Math.floor((width - totalW) / 2);
+    const rects = bars.map((b, i) => {
+      const h = Math.max(2, (b.used / max) * (height - PAD_BOTTOM - 4));
+      return {
+        x: x0 + i * (barW + gap),
+        y: height - PAD_BOTTOM - h,
+        w: barW,
+        h,
+        bar: b,
+      };
+    });
+    return { rects, max };
+  }, [bars, width, height]);
 
   if (!geom) {
-    return <div className="spark empty">数据积累中（自动刷新后出现趋势）</div>;
+    return <div className="spark empty">数据积累中（自动刷新后出现消耗柱状图）</div>;
   }
 
   const onMove = (e) => {
     const rect = wrapRef.current.getBoundingClientRect();
     const mx = e.clientX - rect.left;
-    let nearest = geom.xy[0];
-    for (const p of geom.xy) {
-      if (Math.abs(p.x - mx) < Math.abs(nearest.x - mx)) nearest = p;
+    let nearest = geom.rects[0];
+    for (const r of geom.rects) {
+      const cx = r.x + r.w / 2;
+      if (Math.abs(cx - mx) < Math.abs(nearest.x + nearest.w / 2 - mx)) nearest = r;
     }
-    setHover({ ...nearest });
+    setHover(nearest);
   };
-
-  const last = geom.xy[geom.xy.length - 1];
-  const first = geom.xy[0];
-  const down = last.point.remaining < first.point.remaining;
 
   return (
     <div className="spark-wrap" ref={wrapRef} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
       <svg className="spark" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
         <defs>
-          <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id="usageBarGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" className="spark-stop-a" />
-            <stop offset="100%" className="spark-stop-b" />
+            <stop offset="100%" className="usage-stop-b" />
           </linearGradient>
         </defs>
-        <path d={geom.area} fill="url(#sparkFill)" />
-        <path d={geom.line} className={`spark-line ${down ? 'down' : ''}`} fill="none" />
-        {hover && (
-          <line x1={hover.x} y1={2} x2={hover.x} y2={height - 2} className="spark-cursor" />
-        )}
-        <circle cx={last.x} cy={last.y} r="2.5" className={`spark-dot ${down ? 'down' : ''}`} />
-        {hover && <circle cx={hover.x} cy={hover.y} r="3" className="spark-hover-dot" />}
+        {geom.rects.map((r, i) => (
+          <rect
+            key={i}
+            x={r.x} y={r.y} width={r.w} height={r.h} rx={Math.min(2, r.w / 2)}
+            className={`usage-bar ${hover === r ? 'hot' : ''}`}
+            fill="url(#usageBarGrad)"
+          />
+        ))}
+        <line x1="0" y1={height - PAD_BOTTOM} x2={width} y2={height - PAD_BOTTOM} className="usage-base" />
       </svg>
       {hover && (
         <div
           className="spark-tip"
           style={{
-            left: Math.max(4, Math.min(width - 96, hover.x - 46)),
-            top: Math.max(0, hover.y - 44),
+            left: Math.max(4, Math.min(width - 110, hover.x + hover.w / 2 - 55)),
+            top: Math.max(0, hover.y - 46),
           }}
         >
-          <b>{fmtNum(hover.point.remaining)}</b>
-          <span>{new Date(hover.point.t).toLocaleString('zh-CN', { hour12: false, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+          <b>消耗 {fmtNum(hover.bar.used)}</b>
+          <span>{new Date(hover.bar.t).toLocaleString('zh-CN', { hour12: false, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
         </div>
       )}
     </div>

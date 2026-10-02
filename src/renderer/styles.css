@@ -288,6 +288,10 @@ body {
 .spark-dot.down { fill: var(--ok); }
 .spark-cursor { stroke: var(--panel-line); stroke-width: 1; stroke-dasharray: 3 3; }
 .spark-hover-dot { fill: var(--text); stroke: var(--accent); stroke-width: 2; }
+.usage-bar { opacity: .72; transition: opacity .15s ease; }
+.usage-bar.hot { opacity: 1; }
+.usage-stop-b { stop-color: rgba(157, 107, 255, 0.15); }
+.usage-base { stroke: var(--panel-line); stroke-width: 1; }
 .spark-tip {
   position: absolute; z-index: 5; pointer-events: none;
   background: var(--panel-solid); border: 1px solid var(--panel-line); border-radius: 9px;
