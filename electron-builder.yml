@@ -1,0 +1,21 @@
+appId: com.zcode.buddy
+productName: ZCode Buddy
+directories:
+  output: release
+files:
+  - dist/**
+  - electron/**
+  - core/**
+  - package.json
+asar: true
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: ZCode Buddy

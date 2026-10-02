@@ -1,0 +1,14 @@
+node_modules/
+dist/
+release/
+
+# 账号快照含登录凭证，严禁入库
+accounts/
+.last/
+*.local
+*.zbak
+
+# ZCode 会话内部文件
+.zcode/
+
+.DS_Store
