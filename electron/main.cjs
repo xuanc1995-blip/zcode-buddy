@@ -2,7 +2,7 @@
 /**
  * Electron 主进程：窗口、托盘、IPC（把 core 能力暴露给渲染进程）、低额度轮询提醒。
  */
-const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, nativeImage, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell, nativeImage, globalShortcut, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -26,7 +26,7 @@ if (!app.isPackaged) {
 // ---------------------------------------------------------------------------
 // 设置（userData/settings.json）
 // ---------------------------------------------------------------------------
-const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'dark', autoSwitch: false, globalHotkeys: false };
+const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'system', autoSwitch: false, globalHotkeys: false };
 
 function settingsFile() {
   return path.join(app.getPath('userData'), 'settings.json');
@@ -39,6 +39,12 @@ function loadSettings() {
     if (!saved.intervalMigrated && saved.pollIntervalMinutes === 30) {
       saved.pollIntervalMinutes = DEFAULT_SETTINGS.pollIntervalMinutes;
       saved.intervalMigrated = true;
+      try { fs.writeFileSync(settingsFile(), JSON.stringify(saved, null, 2), 'utf8'); } catch (_) {}
+    }
+    // 一次性迁移：v0.3.2 起支持主题跟随系统
+    if (!saved.themeMigrated && saved.theme === 'dark') {
+      saved.theme = 'system';
+      saved.themeMigrated = true;
       try { fs.writeFileSync(settingsFile(), JSON.stringify(saved, null, 2), 'utf8'); } catch (_) {}
     }
     return saved;
@@ -276,11 +282,14 @@ function readSettingsForRenderer() {
 }
 
 function applyTheme(theme) {
-  const t = theme || 'dark';
+  const t = theme || 'system';
+  // 跟随系统：themeSource 交给系统；effective 取实际生效的深浅
+  try { nativeTheme.themeSource = t === 'system' ? 'system' : t; } catch (_) {}
+  const effective = nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('theme:changed', t);
+    mainWindow.webContents.send('theme:changed', effective);
     try {
-      mainWindow.setTitleBarOverlay({ color: '#00000000', symbolColor: t === 'light' ? '#1b1c2e' : '#ecedf5', height: 34 });
+      mainWindow.setTitleBarOverlay({ color: '#00000000', symbolColor: effective === 'light' ? '#1b1c2e' : '#ecedf5', height: 34 });
     } catch (_) {}
   }
 }
@@ -349,6 +358,10 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
+
+  // 页面就绪后按当前设置应用主题（跟随系统/深/浅），系统切换时实时联动
+  mainWindow.webContents.on('did-finish-load', () => applyTheme(loadSettings().theme));
+  nativeTheme.on('updated', () => applyTheme(loadSettings().theme));
 
   // 窗口聚焦时自动刷新额度（节流 60s，不弹通知）
   let lastFocusPoll = 0;

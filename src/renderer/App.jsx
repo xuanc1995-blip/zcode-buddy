@@ -37,7 +37,8 @@ export default function App() {
     reload();
     window.buddy.getSettings().then((s) => {
       setSettings(s);
-      document.documentElement.dataset.theme = s.theme || 'dark';
+      // 'system' 的实际生效色由主进程通过 theme:changed 事件下发，这里先给个即时初值
+      document.documentElement.dataset.theme = s.theme === 'light' ? 'light' : 'dark';
     });
     window.buddy.getVersion().then(setVersion);
     window.buddy.on('state:changed', reload);

@@ -88,11 +88,14 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
         <div className="theme-row">
           <span>界面主题</span>
           <div className="theme-switch">
-            <button className={`theme-btn ${(draft.theme || 'dark') === 'dark' ? 'active' : ''}`} onClick={() => save({ theme: 'dark' })}>
+            <button className={`theme-btn ${draft.theme === 'dark' ? 'active' : ''}`} onClick={() => save({ theme: 'dark' })}>
               <IconMoon size={14} /> 深色
             </button>
             <button className={`theme-btn ${draft.theme === 'light' ? 'active' : ''}`} onClick={() => save({ theme: 'light' })}>
               <IconSun size={14} /> 浅色
+            </button>
+            <button className={`theme-btn ${draft.theme === 'system' ? 'active' : ''}`} onClick={() => save({ theme: 'system' })}>
+              <IconMonitor size={14} /> 跟随系统
             </button>
           </div>
         </div>
