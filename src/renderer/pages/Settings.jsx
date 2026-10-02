@@ -1,7 +1,21 @@
 import React, { useEffect, useState } from 'react';
+import Toggle from '../components/Toggle.jsx';
 import {
   IconMoon, IconSun, IconDownload, IconUpload, IconFolder, IconMonitor, IconKey, IconInfo, IconHeart, IconSwitch,
 } from '../components/icons.jsx';
+
+/** 统一的设置行：左侧标题+说明，右侧控件 */
+function Row({ title, desc, children }) {
+  return (
+    <div className="setting-row">
+      <div className="setting-info">
+        <b>{title}</b>
+        {desc && <span className="hint">{desc}</span>}
+      </div>
+      <div className="setting-ctl">{children}</div>
+    </div>
+  );
+}
 
 export default function SettingsPage({ state, settings, setSettings, busy, run, showToast }) {
   // hooks 必须在任何条件 return 之前调用
@@ -27,6 +41,8 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
     if (!r.canceled) showToast(`导入完成：新增 ${r.imported} 个，跳过已存在 ${r.skipped} 个`);
   });
 
+  const transparency = draft.transparency ?? 0;
+
   return (
     <div className="page narrow">
       <header className="page-head">
@@ -38,84 +54,72 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
 
       <section className="panel">
         <h2><IconKey size={15} /> 提醒与轮询</h2>
-        <label className="field">
-          <span>低额度阈值：剩余低于 <b>{draft.lowQuotaThreshold}%</b> 时发送 Windows 通知</span>
-          <input
-            type="range" min={1} max={50} value={draft.lowQuotaThreshold}
-            onChange={(e) => setDraft({ ...draft, lowQuotaThreshold: Number(e.target.value) })}
-            onMouseUp={() => save({ lowQuotaThreshold: draft.lowQuotaThreshold })}
-            onTouchEnd={() => save({ lowQuotaThreshold: draft.lowQuotaThreshold })}
-          />
-        </label>
-        <label className="field">
-          <span>额度自动轮询间隔（分钟，0 = 关闭）</span>
-          <input
-            type="number" min={0} max={720} value={draft.pollIntervalMinutes}
-            onChange={(e) => setDraft({ ...draft, pollIntervalMinutes: Number(e.target.value) })}
-            onBlur={() => save({ pollIntervalMinutes: draft.pollIntervalMinutes })}
-          />
-          <span className="hint">窗口聚焦时会自动刷新（节流 1 分钟），不受此项影响</span>
-        </label>
-        <label className="field row">
-          <input
-            type="checkbox" checked={!!draft.autoStartPolling}
-            onChange={(e) => save({ autoStartPolling: e.target.checked })}
-          />
-          <span>启动时立即进行一轮额度刷新</span>
-        </label>
+        <div className="rows">
+          <Row title="低额度阈值" desc={`剩余低于该值时发送 Windows 通知`}>
+            <input
+              type="range" min={1} max={50} value={draft.lowQuotaThreshold}
+              onChange={(e) => setDraft({ ...draft, lowQuotaThreshold: Number(e.target.value) })}
+              onMouseUp={() => save({ lowQuotaThreshold: draft.lowQuotaThreshold })}
+              onTouchEnd={() => save({ lowQuotaThreshold: draft.lowQuotaThreshold })}
+            />
+            <em className="ctl-value">{draft.lowQuotaThreshold}%</em>
+          </Row>
+          <Row title="自动轮询间隔" desc="定时刷新全部账号额度，0 = 关闭">
+            <input
+              type="number" min={0} max={720} value={draft.pollIntervalMinutes}
+              onChange={(e) => setDraft({ ...draft, pollIntervalMinutes: Number(e.target.value) })}
+              onBlur={() => save({ pollIntervalMinutes: draft.pollIntervalMinutes })}
+            />
+            <em className="ctl-value">分钟</em>
+          </Row>
+          <Row title="启动时立即刷新" desc="应用启动后马上进行一轮额度查询">
+            <Toggle checked={draft.autoStartPolling} onChange={(v) => save({ autoStartPolling: v })} />
+          </Row>
+        </div>
       </section>
 
       <section className="panel">
         <h2><IconSwitch size={15} /> 切换策略</h2>
-        <label className="field row">
-          <input
-            type="checkbox" checked={!!draft.autoSwitch}
-            onChange={(e) => save({ autoSwitch: e.target.checked })}
-          />
-          <span>自动切换：轮询发现当前账号剩余低于阈值时，自动切到剩余最多的账号（会关闭并重启 ZCode，并发通知）</span>
-        </label>
-        <label className="field row">
-          <input
-            type="checkbox" checked={!!draft.globalHotkeys}
-            onChange={(e) => save({ globalHotkeys: e.target.checked })}
-          />
-          <span>全局快捷键：<kbd className="hotkey">Ctrl+Alt+1~9</kbd> 切到第 N 个账号（应用在后台也生效）</span>
-        </label>
+        <div className="rows">
+          <Row title="自动切换" desc="当前账号剩余低于阈值时，自动切到剩余最多的账号（会重启 ZCode 并通知）">
+            <Toggle checked={draft.autoSwitch} onChange={(v) => save({ autoSwitch: v })} />
+          </Row>
+          <Row title="全局快捷键" desc={<><kbd className="hotkey">Ctrl+Alt+1~9</kbd> 切到第 N 个账号，应用在后台也生效</>}>
+            <Toggle checked={draft.globalHotkeys} onChange={(v) => save({ globalHotkeys: v })} />
+          </Row>
+        </div>
       </section>
 
       <section className="panel">
         <h2><IconMonitor size={15} /> 通用</h2>
-        <div className="theme-row">
-          <span>界面主题</span>
-          <div className="theme-switch">
-            <button className={`theme-btn ${draft.theme === 'dark' ? 'active' : ''}`} onClick={() => save({ theme: 'dark' })}>
-              <IconMoon size={14} /> 深色
-            </button>
-            <button className={`theme-btn ${draft.theme === 'light' ? 'active' : ''}`} onClick={() => save({ theme: 'light' })}>
-              <IconSun size={14} /> 浅色
-            </button>
-            <button className={`theme-btn ${draft.theme === 'system' ? 'active' : ''}`} onClick={() => save({ theme: 'system' })}>
-              <IconMonitor size={14} /> 跟随系统
-            </button>
-          </div>
+        <div className="rows">
+          <Row title="界面主题" desc="跟随系统时，Windows 深浅色切换会实时联动">
+            <div className="theme-switch segmented">
+              <button className={`theme-btn ${draft.theme === 'dark' ? 'active' : ''}`} onClick={() => save({ theme: 'dark' })}>
+                <IconMoon size={13} /> 深色
+              </button>
+              <button className={`theme-btn ${draft.theme === 'light' ? 'active' : ''}`} onClick={() => save({ theme: 'light' })}>
+                <IconSun size={13} /> 浅色
+              </button>
+              <button className={`theme-btn ${draft.theme === 'system' ? 'active' : ''}`} onClick={() => save({ theme: 'system' })}>
+                <IconMonitor size={13} /> 跟随系统
+              </button>
+            </div>
+          </Row>
+          <Row title="开机自动启动" desc="登录 Windows 后自动运行 ZCode Buddy">
+            <Toggle checked={!!draft.autoLaunch} onChange={(v) => save({ autoLaunch: v })} />
+          </Row>
+          <Row title="窗口透明度" desc={transparency === 0 ? '不透明' : '配合 Windows 11 亚克力模糊'}>
+            <input
+              type="range" min={0} max={80} step={5} value={transparency}
+              onChange={(e) => setDraft({ ...draft, transparency: Number(e.target.value) })}
+              onMouseUp={() => save({ transparency: draft.transparency })}
+              onTouchEnd={() => save({ transparency: draft.transparency })}
+            />
+            <em className="ctl-value">{transparency}%</em>
+          </Row>
         </div>
-        <label className="field row">
-          <input
-            type="checkbox" checked={!!draft.autoLaunch}
-            onChange={(e) => save({ autoLaunch: e.target.checked })}
-          />
-          <span>开机自动启动 ZCode Buddy</span>
-        </label>
-        <label className="field">
-          <span>窗口透明度：<b>{draft.transparency ?? 0}%</b>{!(draft.transparency) && '（不透明）'}</span>
-          <input
-            type="range" min={0} max={80} step={5} value={draft.transparency ?? 0}
-            onChange={(e) => setDraft({ ...draft, transparency: Number(e.target.value) })}
-            onMouseUp={() => save({ transparency: draft.transparency })}
-            onTouchEnd={() => save({ transparency: draft.transparency })}
-          />
-          <span className="hint">透明模式下使用 Windows 11 亚克力模糊效果（配合同主题色调和）；调整跨越 0% 时窗口会短暂重建闪烁一下</span>
-        </label>
+        <p className="hint block">提示：透明度从 0% 调整到其他值（或调回 0）时窗口会短暂重建闪烁一下，属正常现象。</p>
       </section>
 
       <section className="panel">

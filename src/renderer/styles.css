@@ -317,6 +317,54 @@ body::before {
 .time { color: var(--text-faint); font-size: 11px; }
 .ops { display: flex; gap: 6px; }
 
+/* ============ 设置行式布局 ============ */
+.panel { gap: 10px; }
+.rows { display: flex; flex-direction: column; }
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 13px 2px;
+}
+.setting-row:not(:first-child) { border-top: 1px solid var(--panel-line); }
+.setting-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.setting-info b { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.setting-info .hint { font-size: 11.5px; line-height: 1.6; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.setting-ctl { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.setting-ctl input[type='range'] { width: 200px; accent-color: var(--accent); }
+.setting-ctl input[type='number'] {
+  background: var(--panel-solid); border: 1px solid var(--panel-line); color: var(--text);
+  border-radius: 9px; padding: 7px 10px; outline: none; width: 84px; text-align: right;
+}
+.setting-ctl input[type='number']:focus { border-color: var(--accent); }
+.ctl-value { font-style: normal; min-width: 40px; text-align: right; font-size: 12.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+/* 开关 */
+.switch { position: relative; display: inline-block; width: 42px; height: 23px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch .knob {
+  position: absolute; inset: 0; border-radius: 999px; cursor: pointer;
+  background: var(--ring-track); transition: background .2s ease;
+}
+.switch .knob::before {
+  content: ''; position: absolute; width: 17px; height: 17px; left: 3px; top: 3px;
+  background: #fff; border-radius: 50%; transition: transform .2s cubic-bezier(.22,.9,.35,1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.switch input:checked + .knob { background: linear-gradient(135deg, var(--accent), var(--accent2)); }
+.switch input:checked + .knob::before { transform: translateX(19px); }
+.switch.disabled { opacity: .5; pointer-events: none; }
+
+/* 分段式主题控件 */
+.theme-switch.segmented {
+  display: flex; gap: 2px; padding: 3px;
+  background: var(--panel-solid); border: 1px solid var(--panel-line); border-radius: 11px;
+}
+.theme-switch.segmented .theme-btn {
+  border: none; background: transparent; padding: 6px 12px; border-radius: 8px;
+}
+.theme-switch.segmented .theme-btn.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+}
+
 /* ============ 环形表 ============ */
 .ring-wrap { position: relative; display: grid; place-items: center; flex-shrink: 0; filter: drop-shadow(0 10px 24px rgba(108, 123, 255, 0.25)); }
 .ring-svg { transform: rotate(0deg); }
