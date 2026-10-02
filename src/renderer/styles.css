@@ -1,5 +1,7 @@
 /* ============ 主题变量 ============ */
 :root {
+  --win-alpha: 1;                 /* 窗口不透明度（设置里可调） */
+  --bg-rgb: 11 11 16;
   --bg: #0b0b10;
   --bg-grad: radial-gradient(1100px 620px at 85% -10%, #1d1d3a 0%, transparent 60%),
              radial-gradient(900px 500px at -10% 110%, #17172e 0%, transparent 55%);
@@ -20,17 +22,18 @@
   --ring-b: #9d6bff;
 }
 :root[data-theme='light'] {
-  --bg: #f2f3fa;
-  --bg-grad: radial-gradient(1100px 620px at 85% -10%, #e3e6ff 0%, transparent 60%),
-             radial-gradient(900px 500px at -10% 110%, #eae4ff 0%, transparent 55%);
-  --panel: rgba(255, 255, 255, 0.75);
-  --panel-solid: #ffffff;
-  --panel-line: rgba(20, 20, 40, 0.1);
-  --text: #1b1c2e;
-  --text-dim: #5a5c75;
-  --text-faint: #9a9cb5;
-  --shadow: 0 14px 34px -18px rgba(40, 40, 90, 0.25);
-  --ring-track: rgba(20, 20, 40, 0.08);
+  --bg-rgb: 233 235 244;
+  --bg: #e9ebf4;
+  --bg-grad: radial-gradient(1100px 620px at 85% -10%, #dfe3f5 0%, transparent 60%),
+             radial-gradient(900px 500px at -10% 110%, #e6e0f6 0%, transparent 55%);
+  --panel: rgba(252, 253, 255, 0.68);
+  --panel-solid: #f6f7fc;
+  --panel-line: rgba(24, 26, 48, 0.12);
+  --text: #23243a;
+  --text-dim: #565873;
+  --text-faint: #8f92ad;
+  --shadow: 0 14px 34px -18px rgba(40, 40, 90, 0.22);
+  --ring-track: rgba(24, 26, 48, 0.09);
 }
 :root[data-theme='light'] .btn.ghost:hover:not(:disabled) { background: rgba(20, 20, 40, 0.04); }
 :root[data-theme='light'] .toast { border-color: var(--accent); }
@@ -39,16 +42,25 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html { background: transparent; }
+
 body {
-  background: var(--bg);
-  background-image: var(--bg-grad);
-  background-attachment: fixed;
+  background-color: rgba(var(--bg-rgb) / var(--win-alpha));
   color: var(--text);
   font-family: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
   font-size: 14px;
   height: 100vh;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+}
+/* 极光渐变层：跟随窗口不透明度淡出，保证透明模式下不糊死 */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -1;
+  background-image: var(--bg-grad);
+  background-attachment: fixed;
+  opacity: var(--win-alpha);
+  pointer-events: none;
 }
 #root { height: 100vh; }
 

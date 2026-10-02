@@ -26,7 +26,7 @@ if (!app.isPackaged) {
 // ---------------------------------------------------------------------------
 // 设置（userData/settings.json）
 // ---------------------------------------------------------------------------
-const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'system', autoSwitch: false, globalHotkeys: false };
+const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'system', autoSwitch: false, globalHotkeys: false, transparency: 0 };
 
 function settingsFile() {
   return path.join(app.getPath('userData'), 'settings.json');
@@ -243,6 +243,15 @@ function registerIpc() {
     startPolling();
     applyTheme(next.theme);
     if (typeof clean.globalHotkeys === 'boolean') applyGlobalHotkeys(next.globalHotkeys);
+    // 透明度跨越 0 边界需要重建窗口（transparent 属性不可运行时更改）
+    if (typeof clean.transparency === 'number') {
+      const wantTransparent = Math.max(0, Math.min(80, next.transparency ?? 0)) > 0;
+      if (wantTransparent !== currentTransparent) {
+        try { if (mainWindow && !mainWindow.isDestroyed()) saveSettings({ windowBounds: mainWindow.getNormalBounds() }); } catch (_) {}
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.destroy();
+        createWindow();
+      }
+    }
     return readSettingsForRenderer();
   });
 
@@ -320,17 +329,23 @@ function showMainWindow() {
   mainWindow.focus();
 }
 
+let currentTransparent = false; // 当前窗口是否处于透明模式（transparent 属性无法运行时切换，需重建窗口）
+
 function createWindow() {
-  const saved = loadSettings().windowBounds;
+  const saved = loadSettings();
+  const transparency = Math.max(0, Math.min(80, saved.transparency ?? 0));
+  currentTransparent = transparency > 0;
   mainWindow = new BrowserWindow({
-    width: saved?.width ?? 1060,
-    height: saved?.height ?? 700,
-    x: saved?.x,
-    y: saved?.y,
+    width: saved.windowBounds?.width ?? 1060,
+    height: saved.windowBounds?.height ?? 700,
+    x: saved.windowBounds?.x,
+    y: saved.windowBounds?.y,
     minWidth: 880,
     minHeight: 580,
     autoHideMenuBar: true,
-    backgroundColor: '#101014',
+    backgroundColor: currentTransparent ? '#00000000' : '#101014',
+    transparent: currentTransparent,
+    backgroundMaterial: currentTransparent ? 'acrylic' : undefined,
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#00000000', symbolColor: '#ecedf5', height: 34 },
     webPreferences: {

@@ -106,6 +106,16 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
           />
           <span>开机自动启动 ZCode Buddy</span>
         </label>
+        <label className="field">
+          <span>窗口透明度：<b>{draft.transparency ?? 0}%</b>{!(draft.transparency) && '（不透明）'}</span>
+          <input
+            type="range" min={0} max={80} step={5} value={draft.transparency ?? 0}
+            onChange={(e) => setDraft({ ...draft, transparency: Number(e.target.value) })}
+            onMouseUp={() => save({ transparency: draft.transparency })}
+            onTouchEnd={() => save({ transparency: draft.transparency })}
+          />
+          <span className="hint">透明模式下使用 Windows 11 亚克力模糊效果（配合同主题色调和）；调整跨越 0% 时窗口会短暂重建闪烁一下</span>
+        </label>
       </section>
 
       <section className="panel">

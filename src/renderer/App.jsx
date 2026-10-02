@@ -12,6 +12,11 @@ const NAV = [
   { id: 'settings', label: '设置', icon: IconSettings },
 ];
 
+function applyAppearance(s) {
+  const pct = Math.max(0, Math.min(80, s.transparency ?? 0));
+  document.documentElement.style.setProperty('--win-alpha', String(1 - pct / 100));
+}
+
 export default function App() {
   const [page, setPage] = useState('dashboard');
   const [state, setState] = useState(null);
@@ -39,6 +44,7 @@ export default function App() {
       setSettings(s);
       // 'system' 的实际生效色由主进程通过 theme:changed 事件下发，这里先给个即时初值
       document.documentElement.dataset.theme = s.theme === 'light' ? 'light' : 'dark';
+      applyAppearance(s);
     });
     window.buddy.getVersion().then(setVersion);
     window.buddy.on('state:changed', reload);
@@ -49,6 +55,11 @@ export default function App() {
     const t = setInterval(reload, 10 * 1000);
     return () => clearInterval(t);
   }, [reload]);
+
+  // 窗口不透明度 → CSS 变量（0% 透明 = 完全不透明）
+  useEffect(() => {
+    if (settings) applyAppearance(settings);
+  }, [settings]);
 
   /** 供页面调用的通用动作包装：busy 管理 + 错误提示 */
   const run = useCallback(async (fn, okText) => {
