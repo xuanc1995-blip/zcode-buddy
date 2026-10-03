@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UsageBars } from '../components/charts.jsx';
 import Avatar from '../components/Avatar.jsx';
-import { fmtNum, approxNum, fmtDate, usedToday } from '../util.js';
+import { fmtNum, fmtToken, approxNum, fmtDate, usedToday, usedYesterday } from '../util.js';
 
 /** 用量统计页：单账号 / 全部合并两种视图，当日 + 总计两组数字 */
 export default function Usage({ state, accounts }) {
@@ -12,6 +12,7 @@ export default function Usage({ state, accounts }) {
   const withData = accounts.filter((a) => a.quota && a.quota.percentUsed != null);
   const merged = {
     today: withData.reduce((s, a) => s + (usedToday(a.history) || 0), 0),
+    yesterday: withData.reduce((s, a) => s + (usedYesterday(a.history) || 0), 0),
     used: withData.reduce((s, a) => s + (a.quota.used || 0), 0),
     remaining: withData.reduce((s, a) => s + (a.quota.remaining || 0), 0),
     points: withData.reduce((s, a) => s + (a.history || []).length, 0),
@@ -55,9 +56,9 @@ export default function Usage({ state, accounts }) {
               <div className="stat"><span className="stat-label">今日总消耗</span><span className="stat-num">{merged.today > 0 ? fmtNum(merged.today) : '—'}</span><span className="stat-approx">{merged.today > 0 && approxNum(merged.today)}</span></div>
             </div>
             <div className="merged-group">
-              <span className="sec-label">总计</span>
+              <span className="sec-label">概览</span>
               <div className="stat-grid4">
-                <div className="stat"><span className="stat-label">累计已用</span><span className="stat-num">{fmtNum(merged.used)}</span><span className="stat-approx">{approxNum(merged.used)}</span></div>
+                <div className="stat"><span className="stat-label">昨日消耗</span><span className="stat-num">{merged.yesterday != null ? fmtNum(merged.yesterday) : '—'}</span><span className="stat-approx">{merged.yesterday != null && approxNum(merged.yesterday)}</span></div>
                 <div className="stat"><span className="stat-label">全部剩余</span><span className="stat-num">{fmtNum(merged.remaining)}</span><span className="stat-approx">{approxNum(merged.remaining)}</span></div>
                 <div className="stat"><span className="stat-label">账号数</span><span className="stat-num">{accounts.length}</span></div>
                 <div className="stat"><span className="stat-label">历史点数</span><span className="stat-num">{merged.points}</span></div>
@@ -81,14 +82,14 @@ export default function Usage({ state, accounts }) {
                       <span className="hint">{a.quota?.plan?.tier || '—'}</span>
                     </div>
                     <div className="usage-col"><span className="uc-label">今日</span><b className="uc-val">{today != null ? fmtNum(today) : '—'}</b></div>
-                    <div className="usage-col"><span className="uc-label">累计</span><b className="uc-val">{fmtNum(a.quota?.used)}</b></div>
+                    <div className="usage-col"><span className="uc-label">昨日</span><b className="uc-val">{usedYesterday(a.history) != null ? fmtNum(usedYesterday(a.history)) : '—'}</b></div>
                     <div className="model-bar"><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
                     <em className="usage-pct">{pct != null ? `剩${pct.toFixed(0)}%` : '—'}</em>
                   </div>
                 );
               })}
             </div>
-            <p className="hint block">「今日消耗」基于各账号的历史记录（自动轮询每 5 分钟积累一个点），应用关闭期间不统计。</p>
+            <p className="hint block">「今日消耗」基于各账号的历史记录（自动轮询每 5 分钟积累一个点，保留约 48 小时），应用关闭期间不统计。</p>
           </section>
         </>
       ) : (
@@ -106,7 +107,7 @@ export default function Usage({ state, accounts }) {
             <>
               <section className="stats">
                 <div className="stat"><span className="stat-label">今日消耗</span><span className="stat-num">{usedToday(account.history) != null ? fmtNum(usedToday(account.history)) : '—'}</span><span className="stat-approx">{usedToday(account.history) != null && approxNum(usedToday(account.history))}</span></div>
-                <div className="stat"><span className="stat-label">累计已用</span><span className="stat-num">{fmtNum(account.quota?.used)}</span><span className="stat-approx">{approxNum(account.quota?.used)}</span></div>
+                <div className="stat"><span className="stat-label">昨日消耗</span><span className="stat-num">{usedYesterday(account.history) != null ? fmtNum(usedYesterday(account.history)) : '—'}</span><span className="stat-approx">{usedYesterday(account.history) != null && approxNum(usedYesterday(account.history))}</span></div>
                 <div className="stat"><span className="stat-label">剩余额度</span><span className="stat-num">{fmtNum(account.quota?.remaining)}</span><span className="stat-approx">{approxNum(account.quota?.remaining)}</span></div>
                 <div className="stat"><span className="stat-label">历史记录点</span><span className="stat-num">{(account.history || []).length}</span></div>
               </section>

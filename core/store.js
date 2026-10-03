@@ -137,7 +137,7 @@ function saveQuota(id, quota, { tokenStatus } = {}) {
     // 60 秒内的重复点直接覆盖，避免高频刷新灌爆历史
     if (last && Date.now() - last.t < 60 * 1000) history[history.length - 1] = { t: Date.now(), used: quota.used, total: quota.total, remaining: quota.remaining };
     else history.push({ t: Date.now(), used: quota.used, total: quota.total, remaining: quota.remaining });
-    account.history = history.slice(-240);
+    account.history = history.slice(-576);
   }
   writeAccount(account);
 }

@@ -30,22 +30,34 @@ export function fmtExpiry(ts) {
   return `${days} 天后到期`;
 }
 
-/** 今日消耗：今天之内相邻历史点之间「剩余量下降」的累加（与消耗柱状图同口径；
- *  额度刷新导致的剩余上涨自动跳过，不会把当日消耗错误地记为 0） */
-export function usedToday(history) {
+/** 时间窗内「剩余量下降」的累加（额度刷新上涨自动跳过），当日/昨日消耗共用 */
+export function usedBetween(history, startTs, endTs = Infinity) {
   const pts = (history || []).filter((h) => h && h.remaining != null);
   if (pts.length < 2) return null;
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
   let sum = 0, has = false, prev = null;
   for (const p of pts) {
-    if (prev != null && p.t >= todayStart.getTime()) {
+    if (prev != null && p.t >= startTs && p.t < endTs) {
       const drop = prev - p.remaining;
       if (drop > 0) { sum += drop; has = true; }
     }
     prev = p.remaining;
   }
   return has ? sum : null;
+}
+
+/** 今日消耗：今天之内相邻历史点之间「剩余量下降」的累加（与消耗柱状图同口径；
+ *  额度刷新导致的剩余上涨自动跳过，不会把当日消耗错误地记为 0） */
+export function usedToday(history) {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return usedBetween(history, todayStart.getTime(), Infinity);
+}
+
+/** 昨日消耗（自然日） */
+export function usedYesterday(history) {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return usedBetween(history, todayStart.getTime() - 86400000, todayStart.getTime());
 }
 
 /** 数字滚动动画（缓出），value 为 null 时返回 null */
