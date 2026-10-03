@@ -8,14 +8,17 @@ import { fmtNum, approxNum, fmtToken, fmtDate, fmtExpiry, usedToday } from '../u
 export default function Accounts({ state, accounts, busy, run, setConfirm, showToast }) {
   const [naming, setNaming] = useState(null);
   const [nameDraft, setNamingDraft] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [loginUrl, setLoginUrl] = useState(null);
   const currentId = state?.current?.shortId;
 
-  // 浏览器登录过程的提示（授权 URL 事件由主进程广播）
+  // 浏览器登录进度：主进程广播授权链接，页面内展示可点击的横幅
   useEffect(() => {
     window.buddy.on('login:event', (e) => {
-      if (e?.type === 'authorize-url') showToast('浏览器已打开 Z.AI 授权页；若未打开，请访问控制台日志中的链接', 'ok');
+      if (e?.type === 'authorize-url') setLoginUrl(e.url);
+      if (e?.type === 'done') { setLoginUrl(null); setLoggingIn(false); }
     });
-  }, [showToast]);
+  }, []);
 
   const doCapture = () => run(async () => {
     await window.buddy.captureAccount();
@@ -25,10 +28,20 @@ export default function Accounts({ state, accounts, busy, run, setConfirm, showT
     title: '通过浏览器登录添加账号？',
     body: '将打开 Z.AI 授权页，登录新账号后自动保存为快照并进入登录态。当前登录态若未保存会先自动保存。整个过程约 1–3 分钟。',
     danger: false,
-    onOk: () => run(async () => {
-      const r = await window.buddy.addAccountViaLogin();
-      return r;
-    }, '登录成功，新账号已加入列表'),
+    onOk: async () => {
+      setConfirm(null);
+      setLoggingIn(true);
+      setLoginUrl(null);
+      try {
+        const r = await window.buddy.addAccountViaLogin();
+        showToast(`登录成功，已添加「${r.account.name}」`);
+      } catch (e) {
+        showToast(e.message.replace(/^.*Error: /, ''), 'err');
+      } finally {
+        setLoggingIn(false);
+        setLoginUrl(null);
+      }
+    },
   });
 
   const doUse = (account) => setConfirm({
@@ -65,10 +78,10 @@ export default function Accounts({ state, accounts, busy, run, setConfirm, showT
           <p className="page-sub">保存 / 切换 / 删除账号快照，快照含登录凭证请勿外传</p>
         </div>
         <div className="head-actions">
-          <button className="btn primary" onClick={doAddViaLogin} disabled={busy} title="打开浏览器登录一个新账号，自动保存为快照">
-            <IconUsers size={15} /> 浏览器登录添加
+          <button className="btn primary" onClick={doAddViaLogin} disabled={busy || loggingIn} title="打开浏览器登录一个新账号，自动保存为快照">
+            <IconUsers size={15} /> {loggingIn ? '登录中…' : '浏览器登录添加'}
           </button>
-          <button className="btn" onClick={doCapture} disabled={busy}>
+          <button className="btn" onClick={doCapture} disabled={busy || loggingIn}>
             <IconSave size={15} /> 保存当前账号
           </button>
           <button className="btn" onClick={() => run(async () => { await window.buddy.refreshQuota('all'); }, '额度已刷新')} disabled={busy}>
@@ -87,6 +100,15 @@ export default function Accounts({ state, accounts, busy, run, setConfirm, showT
           </button>
         </div>
       </header>
+
+      {loggingIn && (
+        <section className="panel" style={{ padding: '10px 14px', marginBottom: 12 }}>
+          <p className="hint block" style={{ margin: 0 }}>
+            浏览器登录进行中：请在浏览器里完成 Z.AI 授权，完成后会自动加入列表。期间请勿切换账号。
+            {loginUrl && <> 浏览器未打开？<a href={loginUrl} target="_blank" rel="noreferrer">点此打开授权页</a>。</>}
+          </p>
+        </section>
+      )}
 
       {accounts.length === 0 ? (
         <div className="empty">

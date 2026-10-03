@@ -28,7 +28,10 @@ if (!app.isPackaged) {
 // ---------------------------------------------------------------------------
 // 设置（userData/settings.json）
 // ---------------------------------------------------------------------------
-const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'system', autoSwitch: false, globalHotkeys: false, transparency: 0, hotSwitch: true, autoCheckUpdates: true };
+const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'system', autoSwitch: false, globalHotkeys: false, transparency: 0, hotSwitch: true, autoCheckUpdates: true, autoInstallUpdates: false };
+
+// 浏览器登录进行中：登录态文件正被官方 CLI 改写，此时切换/回滚必须拒绝
+let loginInFlight = false;
 
 function settingsFile() {
   return path.join(app.getPath('userData'), 'settings.json');
@@ -139,6 +142,7 @@ function checkLowQuotaAndNotify(results, settings) {
 
 /** 托盘/通知共用的切换入口。设置开启「热切换」时优先走热切换，失败/不可用自动回退完整切换 */
 async function switchToId(id) {
+  if (loginInFlight) throw new Error('浏览器登录进行中，请等登录完成后再切换账号');
   const account = store.findAccount(id);
   if (!account) throw new Error(`找不到账号：${id}`);
   const targetState = { credentials: account.credentials, config: account.config };
@@ -219,6 +223,7 @@ function registerIpc() {
 
   // 浏览器登录添加账号：复用 ZCode 官方 CLI 的 login --json（浏览器授权 → CLI 写登录态 → 这里照常存快照）
   ipcMain.handle('account:addViaLogin', async () => {
+    if (loginInFlight) throw new Error('已有登录流程进行中');
     const zcodeExe = findZCodeExe();
     // login 会覆盖 ~/.zcode/v2 登录态文件：当前账号若还没快照，先自动保存一份
     const curFp = fingerprint.extractCurrent();
@@ -226,16 +231,22 @@ function registerIpc() {
       const { account } = store.captureCurrent({ name: curFp.label || undefined });
       logActivity('capture', `添加账号前自动保存当前登录态「${account.name}」`);
     }
-    const result = await autologin.loginViaCli({
-      zcodeExe,
-      onEvent: (e) => broadcast('login:event', e),
-    });
-    const { account, updated } = store.captureCurrent({});
-    logActivity('login-add', `${updated ? '更新' : '添加'}账号「${account.name}」（浏览器登录，${result.user.email || result.user.user_id}）`);
-    applyGlobalHotkeys(loadSettings().globalHotkeys);
-    broadcast('state:changed');
-    broadcast('quota:updated');
-    return { account, updated, user: result.user };
+    loginInFlight = true;
+    try {
+      const result = await autologin.loginViaCli({
+        zcodeExe,
+        onEvent: (e) => broadcast('login:event', e),
+      });
+      const { account, updated } = store.captureCurrent({});
+      logActivity('login-add', `${updated ? '更新' : '添加'}账号「${account.name}」（浏览器登录，${result.user.email || result.user.user_id}）`);
+      applyGlobalHotkeys(loadSettings().globalHotkeys);
+      broadcast('state:changed');
+      broadcast('quota:updated');
+      return { account, updated, user: result.user };
+    } finally {
+      loginInFlight = false;
+      broadcast('login:event', { type: 'done' });
+    }
   });
 
   ipcMain.handle('quota:refresh', async (_e, target) => {
@@ -266,6 +277,7 @@ function registerIpc() {
   });
 
   ipcMain.handle('switch:rollback', async () => {
+    if (loginInFlight) throw new Error('浏览器登录进行中，请等登录完成后再回滚');
     const result = await switcher.rollback({ restart: true });
     logActivity('rollback', '回滚到上次切换前的登录态');
     broadcast('state:changed');
@@ -285,6 +297,7 @@ function registerIpc() {
     const next = saveSettings(clean);
     startPolling();
     applyTheme(next.theme);
+    if (typeof clean.autoInstallUpdates === 'boolean') updater.setAutoInstall(clean.autoInstallUpdates);
     if (typeof clean.globalHotkeys === 'boolean') applyGlobalHotkeys(next.globalHotkeys);
     // 透明度跨越 0 边界需要重建窗口（transparent 属性不可运行时更改）
     if (typeof clean.transparency === 'number') {
@@ -590,6 +603,8 @@ if (!gotLock) {
     createTray();
     if (loadSettings().autoStartPolling) startPolling();
     applyGlobalHotkeys(loadSettings().globalHotkeys);
+    // 「自动安装更新」开关：自动下载 + 退出应用时自动安装
+    updater.setAutoInstall(loadSettings().autoInstallUpdates === true);
     // 启动后 15 秒静默检查一次更新，之后每 12 小时一次（设置里可关）
     const silentCheck = () => { if (loadSettings().autoCheckUpdates !== false) updater.checkForUpdates(); };
     setTimeout(silentCheck, 15 * 1000);

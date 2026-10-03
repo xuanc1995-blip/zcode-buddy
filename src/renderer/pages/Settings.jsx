@@ -78,6 +78,9 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
           <Row title="自动检查更新" desc="启动及每 12 小时静默检查一次 GitHub Releases，发现新版本会通知（可在「关于」页手动操作）">
             <Toggle checked={draft.autoCheckUpdates !== false} onChange={(v) => save({ autoCheckUpdates: v })} />
           </Row>
+          <Row title="自动安装更新" desc="发现新版本后自动后台下载，退出应用时自动安装（关闭则只提醒，到「关于」页手动安装）">
+            <Toggle checked={!!draft.autoInstallUpdates} onChange={(v) => save({ autoInstallUpdates: v })} />
+          </Row>
         </div>
       </section>
 

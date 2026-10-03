@@ -56,4 +56,12 @@ function installUpdate() {
   return status;
 }
 
-module.exports = { REPO, setupUpdater, checkForUpdates, downloadUpdate, installUpdate, getStatus: () => ({ ...status }) };
+/** 自动下载 + 退出时自动安装（设置「自动安装更新」开关调用；v 为 false 时回到仅提醒模式） */
+function setAutoInstall(v) {
+  if (status.mode !== 'installed') return status;
+  autoUpdater.autoDownload = Boolean(v);
+  autoUpdater.autoInstallOnAppQuit = Boolean(v);
+  return status;
+}
+
+module.exports = { REPO, setupUpdater, checkForUpdates, downloadUpdate, installUpdate, setAutoInstall, getStatus: () => ({ ...status }) };

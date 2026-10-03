@@ -112,7 +112,7 @@ node scripts/add-shortcut.ps1   # 重建桌面快捷方式
 - ~~热切换~~（v0.6.0 实验版 → v0.6.2 逆向确认后默认开启）
 - ~~自动更新~~（v0.6.0 已实现 electron-updater；后续可做：全量静默更新设置项、便携版引导下载直链）
 - ~~浏览器 OAuth 直接添加新账号~~（v0.6.2 已实现：复用官方 CLI login，见 core/autologin.js；后续可加：登录进度 UI 优化、失败重试入口）
-- 跨账号会话迁移
+- ~~跨账号会话迁移~~（**查证后不需要**：会话存于本地 `~/.zcode/cli/db/db.sqlite`，session/message 等全部表无任何账号绑定字段，切账号历史自动跟随；2026-10-04 用 node:sqlite 检查 schema 证实）
 - macOS / Linux 支持
 - 界面 i18n（当前全中文硬编码）
 
