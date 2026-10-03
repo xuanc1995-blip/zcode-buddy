@@ -211,7 +211,7 @@ body::before {
 .hrow { display: flex; align-items: center; gap: 8px; color: var(--text-dim); font-size: 13px; }
 .hrow svg { color: var(--accent); flex-shrink: 0; }
 .card-models { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
-.card-models .model-row { grid-template-columns: 112px 1fr auto; }
+.card-models .model-row { grid-template-columns: 112px 1fr 74px; }
 .model-row {
   display: grid; grid-template-columns: 130px 1fr auto; align-items: center; gap: 10px;
   font-size: 12px; border: 1px solid transparent; border-radius: 8px;
@@ -228,7 +228,7 @@ body::before {
 .model-name { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .model-bar { height: 6px; background: var(--ring-track); border-radius: 99px; overflow: hidden; }
 .model-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--ok)); border-radius: 99px; transition: width .4s ease; }
-.model-num { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.model-num { color: var(--text-faint); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .hero-ring { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .hero-trend { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 .hero-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; padding: 26px 0; color: var(--text-dim); }

@@ -3,7 +3,7 @@ import Avatar from '../components/Avatar.jsx';
 import {
   IconSave, IconRefresh, IconUndo, IconTrash, IconEdit, IconSwitch, IconCheck, IconAlert, IconFolder,
 } from '../components/icons.jsx';
-import { fmtNum, fmtToken, fmtDate, fmtExpiry, usedToday } from '../util.js';
+import { fmtNum, approxNum, fmtToken, fmtDate, fmtExpiry, usedToday } from '../util.js';
 
 export default function Accounts({ state, accounts, busy, run, setConfirm }) {
   const [naming, setNaming] = useState(null);
