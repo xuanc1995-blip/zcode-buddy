@@ -1,11 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Avatar from '../components/Avatar.jsx';
 import {
   IconSave, IconRefresh, IconUndo, IconTrash, IconEdit, IconSwitch, IconCheck, IconAlert, IconFolder, IconUsers,
 } from '../components/icons.jsx';
 import { fmtNum, approxNum, fmtToken, fmtDate, fmtExpiry, usedToday } from '../util.js';
 
-export default function Accounts({ state, accounts, busy, run, setConfirm, showToast }) {
+/** 切换方式选择器：默认值跟随全局设置，选择结果经 onChange 回传（ref 保最新值供确认时读取） */
+function SwitchModeChoice({ defaultMode, onChange }) {
+  const [mode, setMode] = useState(defaultMode);
+  const pick = (m) => { setMode(m); onChange(m); };
+  return (
+    <div className="switch-mode" style={{ margin: '2px 0 4px' }}>
+      <span className="hint">本次切换方式</span>
+      <div className="theme-switch segmented" style={{ display: 'inline-flex', marginLeft: 10 }}>
+        <button type="button" className={`theme-btn ${mode === 'hot' ? 'active' : ''}`} onClick={() => pick('hot')}>热切换</button>
+        <button type="button" className={`theme-btn ${mode === 'full' ? 'active' : ''}`} onClick={() => pick('full')}>完整重启</button>
+      </div>
+    </div>
+  );
+}
+
+export default function Accounts({ state, accounts, settings, busy, run, setConfirm, showToast }) {
   const [naming, setNaming] = useState(null);
   const [nameDraft, setNamingDraft] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
@@ -44,12 +59,17 @@ export default function Accounts({ state, accounts, busy, run, setConfirm, showT
     },
   });
 
-  const doUse = (account) => setConfirm({
-    title: `切换到「${account.name}」？`,
-    body: '默认热切换：只重启 ZCode 的会话进程，主窗口保持打开，新消息立即由新账号驱动（额度即时切换）。注意：ZCode 界面左下角显示的用户名是客户端缓存，会在下次完整重启 ZCode 后刷新。可在设置关闭热切换。',
-    danger: false,
-    onOk: () => run(async () => { await window.buddy.useAccount(account.id); }, '切换完成'),
-  });
+  const doUse = (account) => {
+    const defaultMode = settings?.hotSwitch !== false ? 'hot' : 'full';
+    const modeRef = { current: defaultMode };
+    setConfirm({
+      title: `切换到「${account.name}」？`,
+      body: '热切换：只重启 ZCode 的会话进程，主窗口保持打开，新消息立即由新账号驱动；完整重启：关闭并重开 ZCode，界面身份（左下角用户名）立即刷新。',
+      extra: <SwitchModeChoice defaultMode={defaultMode} onChange={(m) => { modeRef.current = m; }} />,
+      danger: false,
+      onOk: () => run(async () => { await window.buddy.useAccount(account.id, modeRef.current); }, '切换完成'),
+    });
+  };
 
   const doDelete = (account) => setConfirm({
     title: `删除账号「${account.name}」？`,

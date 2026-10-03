@@ -189,15 +189,16 @@ function checkLowQuotaAndNotify(results, settings) {
   notification.show();
 }
 
-/** 托盘/通知共用的切换入口。设置开启「热切换」时优先走热切换，失败/不可用自动回退完整切换 */
-async function switchToId(id) {
+/** 托盘/通知共用的切换入口。mode='hot'|'full' 为单次覆盖（切换弹窗自选）；缺省跟随设置的热切换开关。失败/不可用自动回退完整切换 */
+async function switchToId(id, { mode } = {}) {
   if (loginInFlight) throw new Error('浏览器登录进行中，请等登录完成后再切换账号');
   const account = store.findAccount(id);
   if (!account) throw new Error(`找不到账号：${id}`);
   const targetState = { credentials: account.credentials, config: account.config };
   const settings = loadSettings();
+  const wantHot = mode === 'full' ? false : mode === 'hot' ? true : settings.hotSwitch;
 
-  if (settings.hotSwitch) {
+  if (wantHot) {
     try {
       const hot = await switcher.hotSwitchState(targetState);
       if (hot.hot) {
@@ -259,9 +260,9 @@ function registerIpc() {
     return r;
   });
 
-  ipcMain.handle('account:use', async (_e, id) => {
-    // 与托盘/通知共用 switchToId，保证操作记录、热键等口径一致
-    return switchToId(String(id || ''));
+  ipcMain.handle('account:use', async (_e, id, mode) => {
+    // 与托盘/通知共用 switchToId，保证操作记录、热键等口径一致；mode 为本次切换的单次覆盖（hot/full）
+    return switchToId(String(id || ''), { mode });
   });
 
   ipcMain.handle('account:rename', (_e, { id, name }) => store.renameAccount(id, name));

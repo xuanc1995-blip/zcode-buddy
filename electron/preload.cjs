@@ -6,7 +6,7 @@ contextBridge.exposeInMainWorld('buddy', {
   listAccounts: () => ipcRenderer.invoke('accounts:list'),
   captureAccount: (name) => ipcRenderer.invoke('account:capture', name),
   addAccountViaLogin: () => ipcRenderer.invoke('account:addViaLogin'),
-  useAccount: (id) => ipcRenderer.invoke('account:use', id),
+  useAccount: (id, mode) => ipcRenderer.invoke('account:use', id, mode),
   renameAccount: (id, name) => ipcRenderer.invoke('account:rename', { id, name }),
   deleteAccount: (id) => ipcRenderer.invoke('account:delete', id),
   refreshQuota: (target) => ipcRenderer.invoke('quota:refresh', target),

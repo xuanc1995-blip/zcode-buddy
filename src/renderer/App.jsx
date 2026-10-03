@@ -149,6 +149,7 @@ export default function App() {
         <ConfirmDialog
           title={confirm.title}
           body={confirm.body}
+          extra={confirm.extra}
           danger={confirm.danger}
           busy={busy}
           onCancel={() => setConfirm(null)}
