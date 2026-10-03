@@ -27,31 +27,34 @@ jobs:
           ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
         run: npx vite build && npx electron-builder --win --publish never
 
-      # electron-updater 需要 latest.yml（含校验和）作为 Release 附件才能检测更新
+      # electron-updater 需要 latest.yml（含校验和）作为 Release 附件才能检测更新。
+      # ⚠ path/url 必须用「空格→点号」的安全文件名（与实际上传的附件名一致），
+      #   否则 electron-updater 按 path 拼 URL 会 404（v0.6.0 首发踩过）
       - name: Generate latest.yml
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         run: |
           $setup = Get-ChildItem "release" -Filter "*Setup*.exe" | Select-Object -First 1
           if (-not $setup) { Write-Error "Setup exe not found"; exit 1 }
+          $safeName = $setup.Name -replace ' ', '.'
           $sha256 = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash.ToLower()
           $sha512 = [Convert]::ToBase64String([System.Security.Cryptography.SHA512]::Create().ComputeHash([System.IO.File]::ReadAllBytes($setup.FullName)))
           $version = "${{ github.ref_name }}".TrimStart("v")
           $date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
           $yml = @"
           version: $version
-          path: $($setup.Name)
+          path: $safeName
           sha2: $sha256
           sha512: $sha512
           releaseDate: '$date'
           files:
-            - url: $($setup.Name)
+            - url: $safeName
               sha2: $sha256
               sha512: $sha512
               size: $($setup.Length)
           "@
           Set-Content -Path "release/latest.yml" -Value $yml -Encoding ascii
-          Write-Host "latest.yml generated for $($setup.Name)"
+          Write-Host "latest.yml generated for $safeName"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
