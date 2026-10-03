@@ -15,7 +15,9 @@
     "build:renderer": "vite build",
     "build": "vite build && electron-builder --win",
     "icon": "node scripts/gen-icon.js",
-    "cli": "node core/cli.js"
+    "cli": "node core/cli.js",
+    "test": "node --test \"tests/core/*.test.js\"",
+    "release": "node scripts/release.mjs"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

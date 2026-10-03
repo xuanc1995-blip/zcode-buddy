@@ -74,7 +74,8 @@ function importFromFile(filePath, passphrase) {
     if (!account || !account.id || !account.credentials) { skipped++; continue; }
     const existing = store.readAccount(account.id);
     if (existing) {
-      // 已存在：保留本地命名与使用记录，仅补充本地缺失的数据（额度、历史）
+      // 已存在：保留本地命名与使用记录，仅补充本地缺失的数据（额度、历史），计入「跳过已存在」
+      skipped++;
       existing.quota = existing.quota || account.quota || null;
       existing.history = existing.history && existing.history.length ? existing.history : (account.history || []);
       existing.updatedAt = Date.now();
