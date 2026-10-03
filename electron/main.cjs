@@ -204,8 +204,8 @@ async function switchToId(id) {
         store.touch(id);
         saveLoginState({ lastShortId: account.id, lastLabel: account.name });
         logActivity('hotswitch', hot.respawned
-          ? `热切换到「${account.name}」（agent 已重启，共 ${hot.killed.length} 个会话）`
-          : `热切换到「${account.name}」（登录态已替换；agent 将在下次使用时自动以新账号拉起）`);
+          ? `热切换到「${account.name}」（agent 已重启，共 ${hot.killed.length} 个会话；ZCode 界面用户名待完整重启后刷新）`
+          : `热切换到「${account.name}」（登录态已替换，agent 将在下次使用时自动以新账号拉起；ZCode 界面用户名待完整重启后刷新）`);
         broadcast('state:changed');
         return hot;
       }

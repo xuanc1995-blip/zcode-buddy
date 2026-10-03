@@ -46,7 +46,7 @@ export default function Accounts({ state, accounts, busy, run, setConfirm, showT
 
   const doUse = (account) => setConfirm({
     title: `切换到「${account.name}」？`,
-    body: '默认热切换：只重启 ZCode 的会话进程，主窗口保持打开，会话将在下次使用时以新账号拉起（可在设置关闭，改走完整重启）。',
+    body: '默认热切换：只重启 ZCode 的会话进程，主窗口保持打开，新消息立即由新账号驱动（额度即时切换）。注意：ZCode 界面左下角显示的用户名是客户端缓存，会在下次完整重启 ZCode 后刷新。可在设置关闭热切换。',
     danger: false,
     onOk: () => run(async () => { await window.buddy.useAccount(account.id); }, '切换完成'),
   });
