@@ -21,6 +21,7 @@ function isZCodeRunning() {
     const out = execSync('tasklist /FI "IMAGENAME eq ZCode.exe" /NH /FO CSV', {
       encoding: 'utf8',
       windowsHide: true,
+      timeout: 5000, // WMI 偶发挂起时会永久冻结主进程，必须带超时
     });
     return /"ZCode\.exe"/i.test(out);
   } catch (_) {
@@ -32,7 +33,7 @@ function isZCodeRunning() {
 async function killZCode({ waitMs = 8000 } = {}) {
   if (!isZCodeRunning()) return true;
   try {
-    execSync('taskkill /F /T /IM ZCode.exe', { windowsHide: true, stdio: 'ignore' });
+    execSync('taskkill /F /T /IM ZCode.exe', { windowsHide: true, stdio: 'ignore', timeout: 5000 });
   } catch (_) { /* taskkill 失败也继续轮询确认 */ }
   const deadline = Date.now() + waitMs;
   while (Date.now() < deadline) {
