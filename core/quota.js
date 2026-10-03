@@ -266,6 +266,15 @@ function extractPlan(current) {
 /** 归一化为 {total, used, remaining, percentUsed, plan, items, isEmpty, usageSource} */
 function normalize(currentRaw, balances) {
   const current = unwrap(currentRaw);
+  // entitlement_id → period 映射（daily 额度的 used_units 即当日用量，随续期清零）
+  const periodMap = {};
+  if (Array.isArray(current.plans)) {
+    for (const plan of current.plans) {
+      for (const ent of plan.entitlements || []) {
+        if (ent.entitlement_id) periodMap[ent.entitlement_id] = ent.period || null;
+      }
+    }
+  }
   const items = (Array.isArray(balances) ? balances : []).map((b) => {
     const total = toNum(b.total_units) ?? toNum(b.grant_units);
     const used = toNum(b.used_units);
@@ -274,6 +283,7 @@ function normalize(currentRaw, balances) {
     return {
       name: baseName,
       entitlementId: b.entitlement_id || null,
+      period: periodMap[b.entitlement_id] || null,
       total,
       used,
       remaining,

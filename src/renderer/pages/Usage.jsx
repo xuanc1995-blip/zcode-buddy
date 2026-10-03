@@ -11,7 +11,7 @@ export default function Usage({ state, accounts }) {
 
   const withData = accounts.filter((a) => a.quota && a.quota.percentUsed != null);
   const merged = {
-    today: withData.reduce((s, a) => s + (usedToday(a.history) || 0), 0),
+    today: withData.reduce((s, a) => s + (a.todayUsed ?? usedToday(a.history) ?? 0), 0),
     yesterday: withData.reduce((s, a) => s + (usedYesterday(a.history) || 0), 0),
     used: withData.reduce((s, a) => s + (a.quota.used || 0), 0),
     remaining: withData.reduce((s, a) => s + (a.quota.remaining || 0), 0),
@@ -70,7 +70,7 @@ export default function Usage({ state, accounts }) {
             <h2 style={{ marginBottom: 4 }}>各账号用量</h2>
             <div className="rows">
               {accounts.map((a) => {
-                const today = usedToday(a.history);
+                const today = a.todayUsed ?? usedToday(a.history);
                 const pct = a.quota?.percentUsed != null ? 100 - a.quota.percentUsed : null;
                 const isCurrent = a.id === currentId;
                 return (
@@ -106,7 +106,7 @@ export default function Usage({ state, accounts }) {
           {account ? (
             <>
               <section className="stats">
-                <div className="stat"><span className="stat-label">今日消耗</span><span className="stat-num">{usedToday(account.history) != null ? fmtNum(usedToday(account.history)) : '—'}</span><span className="stat-approx">{usedToday(account.history) != null && approxNum(usedToday(account.history))}</span></div>
+                <div className="stat"><span className="stat-label">今日消耗</span><span className="stat-num">{account.todayUsed != null ? fmtNum(account.todayUsed) : (usedToday(account.history) != null ? fmtNum(usedToday(account.history)) : '—')}</span><span className="stat-approx">{(account.todayUsed != null || usedToday(account.history) != null) && approxNum(account.todayUsed ?? usedToday(account.history))}</span></div>
                 <div className="stat"><span className="stat-label">昨日消耗</span><span className="stat-num">{usedYesterday(account.history) != null ? fmtNum(usedYesterday(account.history)) : '—'}</span><span className="stat-approx">{usedYesterday(account.history) != null && approxNum(usedYesterday(account.history))}</span></div>
                 <div className="stat"><span className="stat-label">剩余额度</span><span className="stat-num">{fmtNum(account.quota?.remaining)}</span><span className="stat-approx">{approxNum(account.quota?.remaining)}</span></div>
                 <div className="stat"><span className="stat-label">历史记录点</span><span className="stat-num">{(account.history || []).length}</span></div>

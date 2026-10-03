@@ -28,7 +28,7 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
   const threshold = settings?.lowQuotaThreshold ?? 10;
   const lowAccounts = withData.filter((a) => 100 - a.quota.percentUsed < threshold);
   const expiredAccounts = accounts.filter((a) => a.tokenStatus === 'expired');
-  const todayUsed = usedToday(current?.history);
+  const todayUsed = current?.todayUsed ?? usedToday(current?.history);
   const remainingPct = current?.quota?.percentUsed != null ? 100 - current.quota.percentUsed : null;
   const currentLow = remainingPct != null && remainingPct < threshold;
 
