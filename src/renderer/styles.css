@@ -535,3 +535,13 @@ body::before {
 }
 .rank-col { font-size: 12px; color: var(--text-dim); white-space: nowrap; display: inline-flex; gap: 4px; align-items: baseline; }
 .rank-col b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* 环形表下方：合计切换（幽灵样式，平时只是淡灰文字） */
+.all-chip {
+  border: none; background: transparent; color: var(--text-faint);
+  font-size: 11.5px; padding: 4px 16px; border-radius: 999px; cursor: pointer; transition: all .15s ease;
+}
+.all-chip:hover { color: var(--accent); background: rgba(108, 123, 255, 0.08); }
+.all-chip.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; font-weight: 600;
+}
