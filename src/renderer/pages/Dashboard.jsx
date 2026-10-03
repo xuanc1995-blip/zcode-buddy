@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { RingGauge, UsageBars } from '../components/charts.jsx';
 import Avatar from '../components/Avatar.jsx';
 import { IconZap, IconSwitch, IconAlert, IconClock, IconRefresh, IconLayers, IconFlame, IconCalendar } from '../components/icons.jsx';
@@ -27,7 +27,22 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
   const expiredAccounts = accounts.filter((a) => a.tokenStatus === 'expired');
   const todayUsed = usedToday(current?.history);
   const remainingPct = current?.quota?.percentUsed != null ? 100 - current.quota.percentUsed : null;
-  const animatedPct = useCountUp(remainingPct == null ? null : Math.round(remainingPct));
+
+  // 环形表的口径：null=自动跟随最常用模型，'all'=全部合计，数字=指定模型下标
+  const models = current?.quota?.items || [];
+  const [selModel, setSelModel] = useState(null);
+  useEffect(() => { setSelModel(null); }, [currentId, models.length]);
+  const autoIdx = useMemo(() => {
+    let best = -1, max = -1;
+    models.forEach((m, i) => { if ((m.used ?? 0) > max) { max = m.used ?? 0; best = i; } });
+    return best;
+  }, [models]);
+  const sel = typeof selModel === 'number'
+    ? models[selModel]
+    : selModel === 'all'
+      ? null
+      : (autoIdx >= 0 ? models[autoIdx] : null);
+  const ringModel = sel && sel.total ? { percent: Math.max(0, (sel.remaining ?? 0) / sel.total * 100), name: sel.name, remaining: sel.remaining } : null;
 
   const doUse = (account) => setConfirm({
     title: `切换到「${account.name}」？`,
@@ -55,10 +70,17 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
             <div className="hero-ring">
               <RingGauge
                 size={176}
-                percent={remainingPct}
-                label="剩余额度"
-                sub={current.quota?.remaining != null ? fmtNum(current.quota.remaining) : ''}
+                percent={ringModel ? ringModel.percent : remainingPct}
+                label={ringModel ? ringModel.name : '剩余额度'}
+                sub={'剩 ' + (ringModel ? fmtNum(ringModel.remaining) : (current.quota?.remaining != null ? fmtNum(current.quota.remaining) : '—'))}
               />
+              <button
+                className={`all-chip ${selModel === 'all' ? 'active' : ''}`}
+                onClick={() => setSelModel(selModel === 'all' ? null : 'all')}
+                title="显示全部模型合计"
+              >
+                合计
+              </button>
             </div>
             <div className="hero-info">
               <div className="hero-title">
@@ -83,18 +105,24 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
                 <div className="hrow"><IconFlame size={14} /><span>已用 <b>{fmtNum(current.quota?.used)}</b>{current.quota?.percentUsed != null && `（${current.quota.percentUsed.toFixed(1)}%）`}</span></div>
                 <div className="hrow"><IconCalendar size={14} /><span>今日消耗 <b className="today-used">{todayUsed != null ? fmtNum(todayUsed) : '—'}</b></span></div>
               </div>
-              {current.quota && !current.quota.isEmpty && (
+              {current.quota && !current.quota.isEmpty && models.length > 0 && (
                 <div className="hero-models">
-                  {current.quota.items.map((it, i) => (
-                    <div key={i} className="model-row">
-                      <span className="model-name">{it.name}</span>
-                      <div className="model-bar"><div
-                        className="model-fill"
-                        style={{ width: it.total ? `${Math.max(0, Math.min(100, ((it.remaining ?? 0) / it.total) * 100))}%` : '0%' }}
-                      /></div>
-                      <span className="model-num">{fmtNum(it.remaining)}</span>
-                    </div>
-                  ))}
+                  {models.map((it, i) => {
+                    const pct = it.total ? Math.max(0, Math.min(100, ((it.remaining ?? 0) / it.total) * 100)) : null;
+                    const active = selModel === 'all' ? false : (selModel == null ? autoIdx === i : selModel === i);
+                    return (
+                      <button
+                        key={i}
+                        className={`model-row clickable ${active ? 'active' : ''}`}
+                        onClick={() => setSelModel(selModel === i ? 'all' : i)}
+                        title="点击在环形表中显示该模型"
+                      >
+                        <span className="model-name">{it.name}</span>
+                        <div className="model-bar"><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
+                        <span className="model-num">{pct != null ? `${pct.toFixed(0)}%` : '—'} · {fmtNum(it.remaining)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -158,7 +186,6 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
           </div>
         </section>
       )}
-      {animatedPct == null && null}
     </div>
   );
 }

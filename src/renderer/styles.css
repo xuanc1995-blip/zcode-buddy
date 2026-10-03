@@ -203,11 +203,32 @@ body::before {
 .hero-models { margin-top: 6px; display: flex; flex-direction: column; gap: 7px; max-width: 460px; }
 .card-models { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
 .card-models .model-row { grid-template-columns: 112px 1fr auto; }
-.model-row { display: grid; grid-template-columns: 130px 1fr auto; align-items: center; gap: 10px; font-size: 12px; }
+.model-row {
+  display: grid; grid-template-columns: 130px 1fr auto; align-items: center; gap: 10px;
+  font-size: 12px; border: 1px solid transparent; border-radius: 8px;
+  background: transparent; padding: 5px 8px; text-align: left; color: var(--text);
+  transition: all .15s ease;
+}
+.model-row.clickable { cursor: pointer; }
+.model-row.clickable:hover { background: rgba(108, 123, 255, 0.08); border-color: var(--panel-line); }
+.model-row.active {
+  background: linear-gradient(135deg, rgba(108, 123, 255, 0.14), rgba(157, 107, 255, 0.1));
+  border-color: rgba(108, 123, 255, 0.45);
+}
+.model-row.active .model-name { color: var(--accent); font-weight: 600; }
 .model-name { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .model-bar { height: 6px; background: var(--ring-track); border-radius: 99px; overflow: hidden; }
 .model-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--ok)); border-radius: 99px; transition: width .4s ease; }
 .model-num { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.all-chip {
+  border: 1px solid var(--panel-line); background: var(--panel-solid); color: var(--text-dim);
+  font-size: 11px; padding: 3px 12px; border-radius: 999px; cursor: pointer; transition: all .15s ease;
+}
+.all-chip:hover { color: var(--text); border-color: var(--accent); }
+.all-chip.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border-color: transparent;
+}
+.hero-ring { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .hero-trend { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 .hero-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; padding: 26px 0; color: var(--text-dim); }
 .hero-empty svg { color: var(--accent); }
