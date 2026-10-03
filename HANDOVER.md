@@ -119,6 +119,7 @@ node scripts/add-shortcut.ps1   # 重建桌面快捷方式
 1. 确认 `CHANGELOG.md` 已更新、`npm run build:renderer` + `npm run build` 通过
 2. 本地验收：`release\win-unpacked\ZCode Buddy.exe` 启动正常、额度数字正确
 3. 提交并推送：`git push origin master:main`（网络抖动多重试；需用户确认实验批可发布）
-4. `git tag v0.x.x && git push --tags` → CI 自动构建。⚠ **一次推送超过 3 个 tag 时 GitHub 不触发任何工作流**（官方限制）：批量发版需每批 ≤3 个分次推，或事后逐个手动派发 `gh workflow run release.yml --ref v0.x.x`（workflow_dispatch 支持 tag 作为 ref，产物照样挂到对应 Release）；CI 生成的 Release 说明只有 compare 链接，用 `gh release edit vX --title "ZCode Buddy vX" --notes ...` 补标题与说明
+4. `git tag v0.x.x && git push --tags` → CI 自动构建。⚠ **一次推送超过 3 个 tag 时 GitHub 不触发任何工作流**（官方限制）：批量发版需每批 ≤3 个分次推，或事后逐个手动派发 `gh workflow run release.yml --ref v0.x.x`（workflow_dispatch 支持 tag 作为 ref，产物照样挂到对应 Release）；CI 生成的 Release 说明只有 compare 链接，用 `gh release edit vX --title "ZCode Buddy vX" --notes ...` 补标题与说明。**推荐直接用发版脚本**：`npm run release <版本>`（tag 单推 + 自动盯 CI）
+5. **latest.yml 命名坑**：electron-updater 用的 latest.yml 里 `path/url` 必须与 Release 附件实际名一致——GitHub 附件是「空格→点号」安全名（`ZCode.Buddy.Setup.0.6.0.exe`），CI 生成步骤已复刻该转换；若手写 latest.yml 记得同步，且 `sha512`（base64）必须是对应 Setup exe 的哈希（v0.6.0 首发曾因带空格名导致更新 404，已修）
 5. 本地发布：`gh release create v0.x.x "release/ZCode Buddy Setup 0.x.x.exe" "release/ZCode Buddy-x.x.x-portable.exe" "release/zcode-buddy-x.x.x-source.zip" --repo xuanc1995-blip/zcode-buddy --title "..." --notes-file ...`
 6. 清理 release/ 旧版本附件
