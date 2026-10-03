@@ -312,6 +312,27 @@ function registerIpc() {
   // 每日消耗聚合（daily.json）：昨日/近 7 天不再依赖 48 小时历史点
   ipcMain.handle('stats:daily', () => ({ days: store.readDailySummary({ days: 60 }) }));
 
+  // 导出每日消耗 CSV（date,total,各账号列）
+  ipcMain.handle('stats:daily:export', async () => {
+    const days = store.readDailySummary({ days: 120 });
+    if (days.length === 0) return { canceled: true, empty: true };
+    const nameById = new Map(store.listAccounts().map((a) => [a.id, a.name]));
+    const ids = [...new Set(days.flatMap((d) => Object.keys(d.accounts)))];
+    const esc = (s) => `"${String(s).replace(/"/g, '""')}"`;
+    const header = ['date', 'total', ...ids.map((id) => esc(nameById.get(id) || id))].join(',');
+    const rows = days.map((d) =>
+      [d.date, d.total ?? '', ...ids.map((id) => d.accounts[id] ?? '')].join(','),
+    );
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      title: '导出每日消耗（CSV）',
+      defaultPath: `zcode-buddy-daily-${store.localDateKey()}.csv`,
+      filters: [{ name: 'CSV', extensions: ['csv'] }],
+    });
+    if (canceled || !filePath) return { canceled: true };
+    fs.writeFileSync(filePath, '\ufeff' + [header, ...rows].join('\r\n') + '\r\n', 'utf8');
+    return { canceled: false, filePath, days: rows.length };
+  });
+
   // 自动更新
   ipcMain.handle('updater:getStatus', () => updater.getStatus());
   ipcMain.handle('updater:check', () => updater.checkForUpdates());

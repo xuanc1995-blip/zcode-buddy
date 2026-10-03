@@ -11,11 +11,13 @@ function dayKey(offset = 0) {
 }
 
 /** 用量统计页：单账号 / 全部合并两种视图，当日 + 总计两组数字 */
-export default function Usage({ state, accounts }) {
+export default function Usage({ state, accounts, showToast }) {
   const currentId = state?.current?.shortId;
   const [mode, setMode] = useState('merged'); // 'merged' | 'single'
   const [selId, setSelId] = useState(null);
   const [daily, setDaily] = useState(null); // 按日聚合（daily.json），跨 48 小时历史上限仍可看昨日/近 7 天
+  const [trendDays, setTrendDays] = useState(7); // 趋势区间：7 / 30 天
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     window.buddy.statsDaily?.().then(setDaily).catch(() => {});
@@ -23,8 +25,20 @@ export default function Usage({ state, accounts }) {
 
   const dailyMap = daily ? Object.fromEntries(daily.days.map((d) => [d.date, d])) : {};
   const yesterdayDaily = dailyMap[dayKey(1)]?.total ?? null;
-  const last7 = daily ? daily.days.slice(-7) : [];
-  const max7 = Math.max(...last7.map((d) => d.total || 0), 1);
+  const trend = daily ? daily.days.slice(-trendDays) : [];
+  const maxTrend = Math.max(...trend.map((d) => d.total || 0), 1);
+
+  const doExport = async () => {
+    setExporting(true);
+    try {
+      const r = await window.buddy.exportDailyCsv();
+      if (!r.canceled) showToast(r.empty ? '暂无可导出的每日数据' : `已导出 ${r.days} 天数据到 CSV`);
+    } catch (e) {
+      showToast(e.message.replace(/^.*Error: /, ''), 'err');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const withData = accounts.filter((a) => a.quota && a.quota.percentUsed != null);
   const merged = {
@@ -111,14 +125,23 @@ export default function Usage({ state, accounts }) {
             <p className="hint block">「今日消耗」为服务器实时口径（各活跃额度当日已用之和）；「昨日 / 近 7 天」来自按日聚合存档（daily.json），应用关闭期间的数据在下次启动后仍完整保留。</p>
           </section>
 
-          {last7.length > 0 && (
+          {trend.length > 0 && (
             <section className="panel">
-              <h2 style={{ marginBottom: 4 }}>近 7 天消耗（全部账号合计）</h2>
+              <div className="page-head" style={{ marginBottom: 4 }}>
+                <h2>每日消耗趋势（全部账号合计）</h2>
+                <div className="row-gap">
+                  <div className="theme-switch segmented">
+                    <button className={`theme-btn ${trendDays === 7 ? 'active' : ''}`} onClick={() => setTrendDays(7)}>7 天</button>
+                    <button className={`theme-btn ${trendDays === 30 ? 'active' : ''}`} onClick={() => setTrendDays(30)}>30 天</button>
+                  </div>
+                  <button className="btn ghost" disabled={exporting} onClick={doExport}>导出 CSV</button>
+                </div>
+              </div>
               <div className="rows">
-                {last7.map((d) => (
+                {trend.map((d) => (
                   <div key={d.date} className="usage-row" style={{ gridTemplateColumns: 'minmax(84px, auto) 1fr minmax(90px, auto)' }}>
                     <span className="hint">{d.date.slice(5).replace('-', '/')}{d.date === dayKey(0) ? '（今天）' : ''}</span>
-                    <div className="model-bar"><div className="model-fill" style={{ width: `${Math.max(2, ((d.total || 0) / max7) * 100)}%` }} /></div>
+                    <div className="model-bar"><div className="model-fill" style={{ width: `${Math.max(2, ((d.total || 0) / maxTrend) * 100)}%` }} /></div>
                     <em className="usage-pct" style={{ fontStyle: 'normal' }}>{fmtNum(d.total)}</em>
                   </div>
                 ))}
