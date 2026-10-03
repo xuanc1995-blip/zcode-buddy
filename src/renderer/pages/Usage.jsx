@@ -22,12 +22,7 @@ export default function Usage({ state, accounts }) {
     : (accounts.find((a) => a.id === currentId) ? currentId : accounts[0]?.id);
   const account = accounts.find((a) => a.id === singleId);
 
-  // 合并视图的排行（今日消耗优先，其次累计已用）
-  const ranked = [...accounts].sort((a, b) => {
-    const ta = usedToday(a.history) ?? -1, tb = usedToday(b.history) ?? -1;
-    if (tb !== ta) return tb - ta;
-    return (b.quota?.used ?? -1) - (a.quota?.used ?? -1);
-  });
+  // 合并视图：按账号顺序（store 层已按名称数字升序）逐个统计
 
   const StatCard = ({ value, label, tone }) => (
     <div className={`stat ${tone || ''}`}>
@@ -71,9 +66,9 @@ export default function Usage({ state, accounts }) {
           </section>
 
           <section className="panel">
-            <h2 style={{ marginBottom: 4 }}>账号排行（按今日消耗）</h2>
+            <h2 style={{ marginBottom: 4 }}>各账号用量</h2>
             <div className="rows">
-              {ranked.map((a) => {
+              {accounts.map((a) => {
                 const today = usedToday(a.history);
                 const pct = a.quota?.percentUsed != null ? 100 - a.quota.percentUsed : null;
                 const isCurrent = a.id === currentId;
@@ -81,7 +76,8 @@ export default function Usage({ state, accounts }) {
                   <div key={a.id} className="setting-row">
                     <div className="setting-info" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       <Avatar name={a.name} id={a.id} size={32} />
-                      <b>{a.name}{isCurrent && ' ·'}</b>
+                      <b>{a.name}</b>
+                      {isCurrent && <span className="badge">当前</span>}
                       <span className="hint">{a.quota?.plan?.tier || '—'}</span>
                     </div>
                     <div className="setting-ctl" style={{ flex: 1, maxWidth: 420, justifyContent: 'flex-end' }}>
