@@ -363,6 +363,17 @@ body::before {
 .setting-ctl input[type='number']:focus { border-color: var(--accent); }
 .ctl-value { font-style: normal; min-width: 40px; text-align: right; font-size: 12.5px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
+/* 下拉框（趋势模型选择等）：跟随深浅色主题，替换原生白色样式 */
+.select {
+  appearance: none; -webkit-appearance: none;
+  background: var(--panel-solid) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%239b9cb0' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>") no-repeat right 11px center;
+  border: 1px solid var(--panel-line); color: var(--text);
+  border-radius: 9px; padding: 7px 32px 7px 12px; outline: none;
+  font-size: 12.5px; cursor: pointer;
+}
+.select:focus { border-color: var(--accent); }
+.select option { background: var(--panel-solid); color: var(--text); }
+
 /* 开关 */
 .switch { position: relative; display: inline-block; width: 42px; height: 23px; flex-shrink: 0; }
 .switch input { opacity: 0; width: 0; height: 0; position: absolute; }

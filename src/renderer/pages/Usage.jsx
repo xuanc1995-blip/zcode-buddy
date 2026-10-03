@@ -58,7 +58,7 @@ export default function Usage({ state, accounts, showToast }) {
   const singleId = accounts.find((a) => a.id === selId) ? selId
     : (accounts.find((a) => a.id === currentId) ? currentId : accounts[0]?.id);
   const account = accounts.find((a) => a.id === singleId);
-  const yesterdaySingle = account ? (dailyMap[dayKey(1)]?.accounts?.[singleId] ?? usedYesterday(account.history)) : null;
+  const yesterdaySingle = account ? (dailyMap[dayKey(1)]?.accounts?.[singleId]?.total ?? usedYesterday(account.history)) : null;
 
   // 合并视图：按账号顺序（store 层已按名称数字升序）逐个统计
 
@@ -108,7 +108,7 @@ export default function Usage({ state, accounts, showToast }) {
             <div className="rows">
               {accounts.map((a) => {
                 const today = a.todayUsed ?? usedToday(a.history);
-                const yesterday = dailyMap[dayKey(1)]?.accounts?.[a.id] ?? usedYesterday(a.history);
+                const yesterday = dailyMap[dayKey(1)]?.accounts?.[a.id]?.total ?? usedYesterday(a.history);
                 const pct = a.quota?.percentUsed != null ? 100 - a.quota.percentUsed : null;
                 const isCurrent = a.id === currentId;
                 return (
@@ -136,7 +136,7 @@ export default function Usage({ state, accounts, showToast }) {
                 <h2>每日消耗趋势{trendModel !== '__total__' ? ` · ${trendModel}` : '（全部账号合计）'}</h2>
                 <div className="row-gap">
                   {modelNames.length > 0 && (
-                    <select value={trendModel} onChange={(e) => setTrendModel(e.target.value)} style={{ padding: '4px 8px' }}>
+                    <select className="select" value={trendModel} onChange={(e) => setTrendModel(e.target.value)}>
                       <option value="__total__">全部模型合计</option>
                       {modelNames.map((m) => <option key={m} value={m}>{m}</option>)}
                     </select>
