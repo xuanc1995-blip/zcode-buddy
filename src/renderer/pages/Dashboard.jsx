@@ -2,13 +2,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { RingGauge, UsageBars } from '../components/charts.jsx';
 import Avatar from '../components/Avatar.jsx';
 import { IconZap, IconSwitch, IconAlert, IconClock, IconRefresh, IconLayers, IconFlame, IconCalendar } from '../components/icons.jsx';
-import { fmtNum, fmtToken, fmtDate, fmtExpiry, usedToday, useCountUp } from '../util.js';
+import { fmtNum, fmtToken, approxNum, fmtDate, fmtExpiry, usedToday, useCountUp } from '../util.js';
 
-function Stat({ value, label, warn, formatter = fmtNum }) {
+function Stat({ value, label, warn, token }) {
   const animated = useCountUp(value);
+  const v = animated == null ? null : Math.round(animated);
+  const ap = token && v != null ? approxNum(v) : null;
   return (
     <div className={`stat ${warn ? 'warn' : ''}`}>
-      <span className="stat-num">{animated == null ? '—' : formatter(Math.round(animated))}</span>
+      <span className="stat-num">{token ? (v == null ? '—' : fmtNum(v)) : animated == null ? '—' : String(animated)}</span>
+      {ap && <span className="stat-approx">{ap}</span>}
       <span className="stat-label">{label}</span>
     </div>
   );
@@ -157,8 +160,8 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
       {/* 汇总统计 */}
       <section className="stats">
         <Stat value={accounts.length} label="账号总数" formatter={(v) => String(v)} />
-        <Stat value={totalRemaining} label="全部剩余额度" formatter={fmtToken} />
-        <Stat value={totalUsed} label="累计已用" formatter={fmtToken} />
+        <Stat value={totalRemaining} label="全部剩余额度" token />
+        <Stat value={totalUsed} label="累计已用" token />
         <Stat value={lowAccounts.length} label={`低额度账号（<${threshold}%）`} warn={lowAccounts.length > 0} formatter={(v) => String(v)} />
       </section>
 
