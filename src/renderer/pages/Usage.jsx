@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UsageBars } from '../components/charts.jsx';
 import Avatar from '../components/Avatar.jsx';
-import { fmtNum, fmtDate, usedToday } from '../util.js';
+import { fmtNum, fmtToken, fmtDate, usedToday } from '../util.js';
 
 /** 用量统计页：单账号 / 全部合并两种视图，当日 + 总计两组数字 */
 export default function Usage({ state, accounts }) {
@@ -52,13 +52,13 @@ export default function Usage({ state, accounts }) {
           <section className="merged-cards">
             <div className="merged-group">
               <span className="sec-label">当日（按各账号历史记录累加）</span>
-              <div className="stat"><span className="stat-num">{merged.today > 0 ? fmtNum(merged.today) : '—'}</span><span className="stat-label">今日总消耗</span></div>
+              <div className="stat"><span className="stat-num">{merged.today > 0 ? fmtToken(merged.today) : '—'}</span><span className="stat-label">今日总消耗</span></div>
             </div>
             <div className="merged-group">
               <span className="sec-label">总计</span>
               <div className="stat-grid4">
-                <div className="stat"><span className="stat-num">{fmtNum(merged.used)}</span><span className="stat-label">累计已用</span></div>
-                <div className="stat"><span className="stat-num">{fmtNum(merged.remaining)}</span><span className="stat-label">全部剩余</span></div>
+                <div className="stat"><span className="stat-num">{fmtToken(merged.used)}</span><span className="stat-label">累计已用</span></div>
+                <div className="stat"><span className="stat-num">{fmtToken(merged.remaining)}</span><span className="stat-label">全部剩余</span></div>
                 <div className="stat"><span className="stat-num">{accounts.length}</span><span className="stat-label">账号数</span></div>
                 <div className="stat"><span className="stat-num">{merged.points}</span><span className="stat-label">历史点数</span></div>
               </div>
@@ -81,8 +81,8 @@ export default function Usage({ state, accounts }) {
                       <span className="hint">{a.quota?.plan?.tier || '—'}</span>
                     </div>
                     <div className="setting-ctl" style={{ flex: 1, maxWidth: 420, justifyContent: 'flex-end' }}>
-                      <span className="rank-col" title="今日消耗">今日 <b>{today != null ? fmtNum(today) : '—'}</b></span>
-                      <span className="rank-col" title="累计已用">累计 <b>{fmtNum(a.quota?.used)}</b></span>
+                      <span className="rank-col" title="今日消耗">今日 <b>{today != null ? fmtToken(today) : '—'}</b></span>
+                      <span className="rank-col" title="累计已用">累计 <b>{fmtToken(a.quota?.used)}</b></span>
                       <div className="model-bar" style={{ width: 110, height: 8 }}><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
                       <em className="ctl-value">{pct != null ? `剩${pct.toFixed(0)}%` : '—'}</em>
                     </div>
@@ -107,9 +107,9 @@ export default function Usage({ state, accounts }) {
           {account ? (
             <>
               <section className="stats">
-                <div className="stat"><span className="stat-num">{usedToday(account.history) != null ? fmtNum(usedToday(account.history)) : '—'}</span><span className="stat-label">今日消耗</span></div>
-                <div className="stat"><span className="stat-num">{fmtNum(account.quota?.used)}</span><span className="stat-label">累计已用</span></div>
-                <div className="stat"><span className="stat-num">{fmtNum(account.quota?.remaining)}</span><span className="stat-label">剩余额度</span></div>
+                <div className="stat"><span className="stat-num">{usedToday(account.history) != null ? fmtToken(usedToday(account.history)) : '—'}</span><span className="stat-label">今日消耗</span></div>
+                <div className="stat"><span className="stat-num">{fmtToken(account.quota?.used)}</span><span className="stat-label">累计已用</span></div>
+                <div className="stat"><span className="stat-num">{fmtToken(account.quota?.remaining)}</span><span className="stat-label">剩余额度</span></div>
                 <div className="stat"><span className="stat-num">{(account.history || []).length}</span><span className="stat-label">历史记录点</span></div>
               </section>
               <section className="panel">
@@ -125,7 +125,7 @@ export default function Usage({ state, accounts }) {
                       const pct = it.total ? Math.max(0, Math.min(100, ((it.remaining ?? 0) / it.total) * 100)) : null;
                       return (
                         <div key={i} className="setting-row">
-                          <div className="setting-info"><b>{it.name}</b><span className="hint">剩 {fmtNum(it.remaining)} / {fmtNum(it.total)}</span></div>
+                          <div className="setting-info"><b>{it.name}</b><span className="hint">剩 {fmtToken(it.remaining)} / {fmtToken(it.total)}</span></div>
                           <div className="setting-ctl" style={{ flex: 1, maxWidth: 320 }}>
                             <div className="model-bar" style={{ flex: 1, height: 8 }}><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
                             <em className="ctl-value">{pct != null ? `${pct.toFixed(0)}%` : '—'}</em>

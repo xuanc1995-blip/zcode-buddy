@@ -1,6 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 export const fmtNum = (v) => (v == null ? '未知' : new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 }).format(v));
+
+/** token 数展示：完整数字 + 大数近似后缀（≥100 万 ≈M，≥10 亿 ≈B） */
+export const fmtToken = (v) => {
+  if (v == null) return '未知';
+  const abs = Math.abs(v);
+  if (abs >= 1e9) return `${fmtNum(v)} ≈${(v / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6) return `${fmtNum(v)} ≈${(v / 1e6).toFixed(1)}M`;
+  return fmtNum(v);
+};
 export const fmtDate = (ts) => (ts ? new Date(ts).toLocaleString('zh-CN', { hour12: false }) : '—');
 export const fmtDay = (ts) => (ts ? new Date(ts).toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '—');
 

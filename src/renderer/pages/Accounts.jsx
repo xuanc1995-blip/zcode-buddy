@@ -3,7 +3,7 @@ import Avatar from '../components/Avatar.jsx';
 import {
   IconSave, IconRefresh, IconUndo, IconTrash, IconEdit, IconSwitch, IconCheck, IconAlert, IconFolder,
 } from '../components/icons.jsx';
-import { fmtNum, fmtDate, fmtExpiry, usedToday } from '../util.js';
+import { fmtNum, fmtToken, fmtDate, fmtExpiry, usedToday } from '../util.js';
 
 export default function Accounts({ state, accounts, busy, run, setConfirm }) {
   const [naming, setNaming] = useState(null);
@@ -116,7 +116,7 @@ export default function Accounts({ state, accounts, busy, run, setConfirm }) {
                 <div className="meta">
                   <span>{q?.plan?.tier || '—'}</span>
                   {q?.plan?.expiresAt && <span>· {fmtExpiry(q.plan.expiresAt)}</span>}
-                  {today != null && today > 0 && <span className="today-chip">今日消耗 {fmtNum(today)}</span>}
+                  {today != null && today > 0 && <span className="today-chip">今日消耗 {fmtToken(today)}</span>}
                 </div>
 
                 {q && !q.isEmpty && (
@@ -124,8 +124,8 @@ export default function Accounts({ state, accounts, busy, run, setConfirm }) {
                     <div className="bar"><div className={`fill ${critical ? 'crit' : low ? 'low' : ''}`} style={{ width: pct != null ? `${pct}%` : '100%' }} /></div>
                     <div className="quota-text">
                       {q.remaining != null
-                        ? <>剩余 <b>{fmtNum(q.remaining)}</b> / {fmtNum(q.total)}{q.percentUsed != null && `（已用 ${q.percentUsed.toFixed(1)}%）`}</>
-                        : <>总量 <b>{fmtNum(q.total)}</b>（已用未知）</>}
+                        ? <>剩余 <b>{fmtToken(q.remaining)}</b> / {fmtToken(q.total)}{q.percentUsed != null && `（已用 ${q.percentUsed.toFixed(1)}%）`}</>
+                        : <>总量 <b>{fmtToken(q.total)}</b>（已用未知）</>}
                     </div>
                     {q.items?.length > 0 && (
                       <div className="card-models">

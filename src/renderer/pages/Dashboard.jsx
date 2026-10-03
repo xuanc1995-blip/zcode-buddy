@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { RingGauge, UsageBars } from '../components/charts.jsx';
 import Avatar from '../components/Avatar.jsx';
 import { IconZap, IconSwitch, IconAlert, IconClock, IconRefresh, IconLayers, IconFlame, IconCalendar } from '../components/icons.jsx';
-import { fmtNum, fmtDate, fmtExpiry, usedToday, useCountUp } from '../util.js';
+import { fmtNum, fmtToken, fmtDate, fmtExpiry, usedToday, useCountUp } from '../util.js';
 
 function Stat({ value, label, warn, formatter = fmtNum }) {
   const animated = useCountUp(value);
@@ -102,9 +102,9 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
                     ? <>套餐 {fmtExpiry(current.quota.plan.expiresAt)}（{fmtDate(current.quota.plan.expiresAt)}）</>
                     : '套餐到期：—'}
                 </span></div>
-                <div className="hrow"><IconLayers size={14} /><span>总量 <b>{fmtNum(current.quota?.total)}</b></span></div>
-                <div className="hrow"><IconFlame size={14} /><span>已用 <b>{fmtNum(current.quota?.used)}</b>{current.quota?.percentUsed != null && `（${current.quota.percentUsed.toFixed(1)}%）`}</span></div>
-                <div className="hrow"><IconCalendar size={14} /><span>今日消耗 <b className="today-used">{todayUsed != null ? fmtNum(todayUsed) : '—'}</b></span></div>
+                <div className="hrow"><IconLayers size={14} /><span>总量 <b>{fmtToken(current.quota?.total)}</b></span></div>
+                <div className="hrow"><IconFlame size={14} /><span>已用 <b>{fmtToken(current.quota?.used)}</b>{current.quota?.percentUsed != null && `（${current.quota.percentUsed.toFixed(1)}%）`}</span></div>
+                <div className="hrow"><IconCalendar size={14} /><span>今日消耗 <b className="today-used">{todayUsed != null ? fmtToken(todayUsed) : '—'}</b></span></div>
               </div>
             </div>
             <div className="hero-trend">
@@ -157,8 +157,8 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
       {/* 汇总统计 */}
       <section className="stats">
         <Stat value={accounts.length} label="账号总数" formatter={(v) => String(v)} />
-        <Stat value={totalRemaining} label="全部剩余额度" />
-        <Stat value={totalUsed} label="累计已用" />
+        <Stat value={totalRemaining} label="全部剩余额度" formatter={fmtToken} />
+        <Stat value={totalUsed} label="累计已用" formatter={fmtToken} />
         <Stat value={lowAccounts.length} label={`低额度账号（<${threshold}%）`} warn={lowAccounts.length > 0} formatter={(v) => String(v)} />
       </section>
 
