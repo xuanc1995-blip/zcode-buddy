@@ -104,7 +104,7 @@ export default function Accounts({ state, accounts, settings, busy, run, setConf
       <header className="page-head">
         <div>
           <h1>账号管理</h1>
-          <p className="page-sub">保存 / 切换 / 删除账号快照，快照含登录凭证请勿外传</p>
+          <p className="page-sub">快照含登录凭证，请勿外传</p>
         </div>
         <div className="head-actions">
           <button className="btn primary" onClick={doAddViaLogin} disabled={busy || loggingIn} title="打开浏览器登录一个新账号，自动保存为快照">
@@ -113,18 +113,18 @@ export default function Accounts({ state, accounts, settings, busy, run, setConf
           <button className="btn" onClick={doCapture} disabled={busy || loggingIn}>
             <IconSave size={15} /> 保存当前账号
           </button>
-          <button className="btn" onClick={() => run(async () => { await window.buddy.refreshQuota('all'); }, '额度已刷新')} disabled={busy}>
-            <IconRefresh size={15} /> 刷新额度
+          <button className="btn ghost btn-icon" onClick={() => run(async () => { await window.buddy.refreshQuota('all'); }, '额度已刷新')} disabled={busy || loggingIn} title="刷新全部账号额度">
+            <IconRefresh size={15} />
           </button>
-          <button className="btn ghost" onClick={() => setConfirm({
+          <button className="btn ghost btn-icon" onClick={() => setConfirm({
             title: '回滚到上次切换前？',
             body: '将关闭并重启 ZCode，恢复上一份登录态。',
             danger: false,
             onOk: () => run(async () => { await window.buddy.rollback(); }, '已回滚'),
-          })} disabled={busy || !state?.canRollback}>
-            <IconUndo size={15} /> 回滚
+          })} disabled={busy || loggingIn || !state?.canRollback} title="回滚到上次切换前的登录态">
+            <IconUndo size={15} />
           </button>
-          <button className="btn ghost" title="打开快照目录" onClick={() => window.buddy.openPath(state?.storeDir)}>
+          <button className="btn ghost btn-icon" title="打开快照目录" onClick={() => window.buddy.openPath(state?.storeDir)}>
             <IconFolder size={15} />
           </button>
         </div>

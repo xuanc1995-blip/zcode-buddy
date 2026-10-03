@@ -151,7 +151,8 @@ body::before {
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .page-head h1 { font-size: 21px; font-weight: 700; }
 .page-sub { color: var(--text-dim); font-size: 12.5px; margin-top: 3px; }
-.head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.head-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
+.btn-icon { width: 38px; padding-left: 0; padding-right: 0; justify-content: center; }
 .sec-label { display: block; color: var(--text-faint); font-size: 12px; margin-bottom: 8px; letter-spacing: 0.4px; }
 
 /* ============ 按钮 ============ */
