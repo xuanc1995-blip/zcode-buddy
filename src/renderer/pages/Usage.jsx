@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UsageBars } from '../components/charts.jsx';
 import Avatar from '../components/Avatar.jsx';
-import { fmtNum, fmtToken, approxNum, fmtDate, usedToday } from '../util.js';
+import { fmtNum, approxNum, fmtDate, usedToday } from '../util.js';
 
 /** 用量统计页：单账号 / 全部合并两种视图，当日 + 总计两组数字 */
 export default function Usage({ state, accounts }) {
@@ -80,8 +80,8 @@ export default function Usage({ state, accounts }) {
                       {isCurrent && <span className="badge">当前</span>}
                       <span className="hint">{a.quota?.plan?.tier || '—'}</span>
                     </div>
-                    <div className="usage-col"><span className="uc-label">今日</span><b className="uc-val">{today != null ? fmtToken(today) : '—'}</b></div>
-                    <div className="usage-col"><span className="uc-label">累计</span><b className="uc-val">{fmtToken(a.quota?.used)}</b></div>
+                    <div className="usage-col"><span className="uc-label">今日</span><b className="uc-val">{today != null ? fmtNum(today) : '—'}</b></div>
+                    <div className="usage-col"><span className="uc-label">累计</span><b className="uc-val">{fmtNum(a.quota?.used)}</b></div>
                     <div className="model-bar"><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
                     <em className="usage-pct">{pct != null ? `剩${pct.toFixed(0)}%` : '—'}</em>
                   </div>
