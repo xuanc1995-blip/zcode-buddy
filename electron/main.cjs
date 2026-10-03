@@ -111,17 +111,21 @@ async function pollQuotaOnce({ notify = true } = {}) {
 function checkLowQuotaAndNotify(results, settings) {
   if (!Notification.isSupported()) return;
   const withData = results.filter(({ info }) => info && info.percentUsed != null);
-  const low = withData.filter(({ info }) => 100 - info.percentUsed < settings.lowQuotaThreshold);
-  if (low.length === 0) return;
+  // 只关注当前登录账号：其他账号额度再低也不弹通知（仪表盘里作参考展示）
+  const curFp = fingerprint.extractCurrent();
+  const cur = curFp ? withData.find(({ account }) => account.id === curFp.shortId) : null;
+  if (!cur || 100 - cur.info.percentUsed >= settings.lowQuotaThreshold) return;
+
   const candidates = withData
-    .filter(({ info }) => info.remaining != null && 100 - info.percentUsed >= settings.lowQuotaThreshold)
+    .filter(({ account, info }) => account.id !== cur.account.id && info.remaining != null
+      && 100 - info.percentUsed >= settings.lowQuotaThreshold)
     .sort((a, b) => b.info.remaining - a.info.remaining);
   const best = candidates[0];
-  const names = low.map(({ account }) => account.name).join('、');
+  const curRemainingPct = 100 - cur.info.percentUsed;
   const body = best
-    ? `点击切换到「${best.account.name}」（剩余 ${formatNum(best.info.remaining)}）`
-    : '所有账号额度都不足了，请前往充值或等待每日额度刷新';
-  const notification = new Notification({ title: `额度不足：${names}`, body, silent: false });
+    ? `剩余 ${curRemainingPct.toFixed(1)}%，点击切换到「${best.account.name}」（剩 ${formatNum(best.info.remaining)}）`
+    : `剩余 ${curRemainingPct.toFixed(1)}%，其他账号额度也不足，请等待每日额度刷新或充值`;
+  const notification = new Notification({ title: `当前账号额度不足：${cur.account.name}`, body, silent: false });
   if (best) notification.on('click', () => {
     switchToId(best.account.id).catch(() => {});
     showMainWindow();

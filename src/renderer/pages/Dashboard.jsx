@@ -27,6 +27,7 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
   const expiredAccounts = accounts.filter((a) => a.tokenStatus === 'expired');
   const todayUsed = usedToday(current?.history);
   const remainingPct = current?.quota?.percentUsed != null ? 100 - current.quota.percentUsed : null;
+  const currentLow = remainingPct != null && remainingPct < threshold;
 
   // 环形表的口径：null=自动跟随最常用模型，'all'=全部合计，数字=指定模型下标
   const models = current?.quota?.items || [];
@@ -149,13 +150,15 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
         <Stat value={lowAccounts.length} label={`低额度账号（<${threshold}%）`} warn={lowAccounts.length > 0} formatter={(v) => String(v)} />
       </section>
 
-      {/* 告警与快捷切换 */}
+      {/* 告警与快捷切换：只有当前账号额度不足才是主告警，其他账号仅作参考 */}
       {(lowAccounts.length > 0 || expiredAccounts.length > 0) && (
-        <section className="alert-box">
+        <section className={`alert-box ${currentLow ? 'hot' : ''}`}>
           <IconAlert size={16} />
           <div>
-            {lowAccounts.length > 0 && <div>额度不足：{lowAccounts.map((a) => a.name).join('、')}（剩余低于 {threshold}%）</div>}
-            {expiredAccounts.length > 0 && <div>Token 已过期：{expiredAccounts.map((a) => a.name).join('、')}，请在 ZCode 重新登录后再「保存当前账号」</div>}
+            {currentLow
+              ? <div>当前账号「{current.name}」额度不足（剩余 {remainingPct.toFixed(1)}%），建议切换到额度充足的账号</div>
+              : lowAccounts.length > 0 && <div className="dim">其他低额度账号：{lowAccounts.map((a) => a.name).join('、')}（剩余低于 {threshold}%，仅供参考）</div>}
+            {expiredAccounts.length > 0 && <div className="dim">Token 已过期：{expiredAccounts.map((a) => a.name).join('、')}，请在 ZCode 重新登录后再「保存当前账号」</div>}
           </div>
         </section>
       )}
