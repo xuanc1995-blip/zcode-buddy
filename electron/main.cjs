@@ -425,7 +425,6 @@ function registerIpc() {
 
   ipcMain.handle('theme:current', () => effectiveTheme());
   ipcMain.handle('activity:list', () => readActivity());
-  ipcMain.handle('activity:clear', () => { try { fs.rmSync(activityFile(), { force: true }); } catch (_) {} return []; });
   ipcMain.handle('app:openPath', (_e, p) => shell.openPath(p));
   ipcMain.handle('app:version', () => app.getVersion());
 
