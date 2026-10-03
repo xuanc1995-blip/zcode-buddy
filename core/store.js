@@ -68,7 +68,7 @@ function captureCurrent({ name, overwrite = true } = {}) {
   return { account, updated: Boolean(existing) };
 }
 
-/** 列出所有快照（按 lastUsedAt/capturedAt 倒序），可选择性隐藏大字段 */
+/** 列出所有快照。排序：名称中的数字小的在前（如 01→02→03），无数字的按名称排最后 */
 function listAccounts({ withPayload = false } = {}) {
   ensureStore();
   const accounts = [];
@@ -77,7 +77,19 @@ function listAccounts({ withPayload = false } = {}) {
     const account = readAccount(file.slice(0, -5));
     if (account) accounts.push(account);
   }
-  accounts.sort((a, b) => (b.lastUsedAt || b.capturedAt) - (a.lastUsedAt || a.capturedAt));
+  const nameNum = (a) => {
+    const m = /\d+/.exec(a.name || '');
+    return m ? parseInt(m[0], 10) : null;
+  };
+  accounts.sort((a, b) => {
+    const na = nameNum(a), nb = nameNum(b);
+    if (na != null && nb != null && na !== nb) return na - nb;
+    if (na != null) return -1;
+    if (nb != null) return 1;
+    const c = String(a.name || '').localeCompare(String(b.name || ''), 'zh-CN');
+    if (c !== 0) return c;
+    return (a.capturedAt || 0) - (b.capturedAt || 0);
+  });
   if (withPayload) return accounts;
   return accounts.map(({ credentials, config, ...meta }) => meta);
 }
