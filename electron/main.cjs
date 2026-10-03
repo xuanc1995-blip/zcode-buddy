@@ -11,6 +11,7 @@ const store = require('../core/store');
 const switcher = require('../core/switcher');
 const quota = require('../core/quota');
 const exporter = require('../core/exporter');
+const updater = require('./updater.cjs');
 const { findZCodeExe } = require('../core/paths');
 
 let mainWindow = null;
@@ -26,7 +27,7 @@ if (!app.isPackaged) {
 // ---------------------------------------------------------------------------
 // 设置（userData/settings.json）
 // ---------------------------------------------------------------------------
-const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'system', autoSwitch: false, globalHotkeys: false, transparency: 0 };
+const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'system', autoSwitch: false, globalHotkeys: false, transparency: 0, hotSwitch: false, autoCheckUpdates: true };
 
 function settingsFile() {
   return path.join(app.getPath('userData'), 'settings.json');
@@ -135,14 +136,31 @@ function checkLowQuotaAndNotify(results, settings) {
   notification.show();
 }
 
-/** 托盘/通知共用的切换入口 */
+/** 托盘/通知共用的切换入口。设置开启「热切换」时优先走热切换，失败/不可用自动回退完整切换 */
 async function switchToId(id) {
   const account = store.findAccount(id);
   if (!account) throw new Error(`找不到账号：${id}`);
-  const result = await switcher.applyState(
-    { credentials: account.credentials, config: account.config },
-    { restart: true },
-  );
+  const targetState = { credentials: account.credentials, config: account.config };
+  const settings = loadSettings();
+
+  if (settings.hotSwitch) {
+    try {
+      const hot = await switcher.hotSwitchState(targetState);
+      if (hot.hot) {
+        store.touch(id);
+        logActivity('hotswitch', hot.respawned
+          ? `热切换到「${account.name}」（agent 已重启，共 ${hot.killed.length} 个会话）`
+          : `热切换到「${account.name}」（未检测到 agent 自动重启；若会话仍用旧账号，请执行一次完整切换）`);
+        broadcast('state:changed');
+        return hot;
+      }
+      logActivity('switch', `热切换不可用（${hot.reason}），改用完整切换`);
+    } catch (e) {
+      logActivity('switch', `热切换失败：${e.message}，改用完整切换`);
+    }
+  }
+
+  const result = await switcher.applyState(targetState, { restart: true });
   store.touch(id);
   logActivity('switch', `切换到「${account.name}」`);
   broadcast('state:changed');
@@ -290,6 +308,15 @@ function registerIpc() {
   ipcMain.handle('activity:clear', () => { try { fs.rmSync(activityFile(), { force: true }); } catch (_) {} return []; });
   ipcMain.handle('app:openPath', (_e, p) => shell.openPath(p));
   ipcMain.handle('app:version', () => app.getVersion());
+
+  // 每日消耗聚合（daily.json）：昨日/近 7 天不再依赖 48 小时历史点
+  ipcMain.handle('stats:daily', () => ({ days: store.readDailySummary({ days: 60 }) }));
+
+  // 自动更新
+  ipcMain.handle('updater:getStatus', () => updater.getStatus());
+  ipcMain.handle('updater:check', () => updater.checkForUpdates());
+  ipcMain.handle('updater:download', () => updater.downloadUpdate());
+  ipcMain.handle('updater:install', () => updater.installUpdate());
 
   // 自绘窗口控制键
   ipcMain.on('win:minimize', () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize(); });
@@ -493,12 +520,37 @@ if (!gotLock) {
 } else {
   app.on('second-instance', showMainWindow);
 
+  // 更新器状态 → 界面广播 + 关键节点 Windows 通知
+  updater.setupUpdater({
+    isPackaged: app.isPackaged,
+    isPortable: Boolean(process.env.PORTABLE_EXECUTABLE_DIR),
+    onEvent: (st) => {
+      broadcast('updater:event', st);
+      try {
+        if (!Notification.isSupported()) return;
+        if (st.state === 'available' && st.version) {
+          const n = new Notification({ title: `发现新版本 v${st.version}`, body: '点击后台下载，完成后会提示安装' });
+          n.on('click', () => { updater.downloadUpdate(); showMainWindow(); });
+          n.show();
+        } else if (st.state === 'downloaded') {
+          const n = new Notification({ title: '新版本已下载完成', body: '点击重启并安装' });
+          n.on('click', () => updater.installUpdate());
+          n.show();
+        }
+      } catch (_) { /* 通知失败不影响更新流程 */ }
+    },
+  });
+
   app.whenReady().then(() => {
     registerIpc();
     createWindow();
     createTray();
     if (loadSettings().autoStartPolling) startPolling();
     applyGlobalHotkeys(loadSettings().globalHotkeys);
+    // 启动后 15 秒静默检查一次更新，之后每 12 小时一次（设置里可关）
+    const silentCheck = () => { if (loadSettings().autoCheckUpdates !== false) updater.checkForUpdates(); };
+    setTimeout(silentCheck, 15 * 1000);
+    setInterval(silentCheck, 12 * 60 * 60 * 1000);
   });
 
   app.on('before-quit', () => { quitting = true; stopPolling(); try { globalShortcut.unregisterAll(); } catch (_) {} });

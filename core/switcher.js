@@ -139,8 +139,101 @@ function restoreLast() {
   writeState({ credentials, config });
 }
 
+// ---------------------------------------------------------------------------
+// 热切换（实验性）：不关闭 ZCode 主窗口，只重启 agent 子进程
+//
+// ZCode 的 agent 子进程（执行 `zcode.cjs app-server --stdio`）在启动时读取登录态；
+// 杀掉后其父进程（NodeService）通常会自动重新拉起，新 agent 即使用新账号。
+// 父进程是否必然拉起无法保证（未逆向确认），因此轮询检测，未重启时如实报告，
+// 由调用方决定是否回退完整切换。默认关闭，设置里手动开启。
+// ---------------------------------------------------------------------------
+
+/** agent 子进程的命令行特征（resources/glm/zcode.cjs app-server --stdio） */
+const AGENT_SIGNATURE = '.cjs app-server';
+
+/**
+ * 解析 PowerShell 输出为 [{pid, cmdline}]（纯函数，供测试）。
+ * 期望每行 `pid\tcmdline`；其余行忽略。
+ */
+function parseAgentOutput(text) {
+  const out = [];
+  for (const line of String(text || '').split(/\r?\n/)) {
+    const tab = line.indexOf('\t');
+    if (tab <= 0) continue;
+    const pid = parseInt(line.slice(0, tab), 10);
+    if (!Number.isInteger(pid) || pid <= 0) continue;
+    out.push({ pid, cmdline: line.slice(tab + 1) });
+  }
+  return out;
+}
+
+/** 列出当前 ZCode agent 子进程（app-server），返回 [{pid, cmdline}] */
+function listAgentProcesses() {
+  const script =
+    "Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'ZCode.exe' -and $_.CommandLine -like '*" +
+    AGENT_SIGNATURE +
+    "*' } | ForEach-Object { [string]$_.ProcessId + [char]9 + $_.CommandLine }";
+  try {
+    const out = execSync(`powershell -NoProfile -Command "${script.replace(/"/g, '\\"')}"`, {
+      encoding: 'utf8',
+      windowsHide: true,
+      timeout: 5000, // 与其他系统调用一致：WMI 拥塞时宁可失败也不能冻结主进程
+    });
+    return parseAgentOutput(out);
+  } catch (_) {
+    return null; // null = 枚举失败（与空数组区分）
+  }
+}
+
+/** 强制结束进程树，返回是否成功 */
+function killProcessTree(pid) {
+  try {
+    execSync(`taskkill /F /T /PID ${pid}`, { windowsHide: true, stdio: 'ignore', timeout: 5000 });
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * 热切换：杀掉全部 agent 子进程 → 原子替换登录态 → 轮询父进程是否重新拉起 agent。
+ * @returns {{hot:boolean, killed:number[], respawned:boolean, reason?:string}}
+ *          hot=false 表示不具备热切换条件，调用方应回退完整切换
+ */
+async function hotSwitchState(targetState, { respawnWaitMs = 8000 } = {}) {
+  if (!targetState || !targetState.credentials || !targetState.config) {
+    throw new Error('目标账号快照不完整');
+  }
+  const agents = listAgentProcesses();
+  if (agents == null) return { hot: false, killed: [], respawned: false, reason: '无法枚举 ZCode 子进程' };
+  if (agents.length === 0) return { hot: false, killed: [], respawned: false, reason: 'ZCode 没有 agent 子进程在运行' };
+
+  const killedPids = agents.map((a) => a.pid);
+  for (const pid of killedPids) killProcessTree(pid);
+  await sleep(700); // 等文件句柄释放
+
+  backupCurrent();
+  try {
+    writeState(targetState);
+  } catch (e) {
+    try { restoreLast(); } catch (_) {}
+    throw new Error('写入登录态失败，已自动回滚：' + e.message);
+  }
+
+  // 轮询等父进程重新拉起 agent（新 agent 读到的就是刚写入的新登录态）
+  const deadline = Date.now() + respawnWaitMs;
+  let respawned = false;
+  while (Date.now() < deadline) {
+    await sleep(600);
+    const now = listAgentProcesses();
+    if (now && now.some((a) => !killedPids.includes(a.pid))) { respawned = true; break; }
+  }
+  return { hot: true, killed: killedPids, respawned };
+}
+
 module.exports = {
   BACKUP_DIR,
+  AGENT_SIGNATURE,
   isZCodeRunning,
   killZCode,
   launchZCode,
@@ -148,4 +241,8 @@ module.exports = {
   applyState,
   rollback,
   hasLastBackup,
+  parseAgentOutput,
+  listAgentProcesses,
+  killProcessTree,
+  hotSwitchState,
 };

@@ -21,11 +21,16 @@ contextBridge.exposeInMainWorld('buddy', {
   getTheme: () => ipcRenderer.invoke('theme:current'),
   activityList: () => ipcRenderer.invoke('activity:list'),
   activityClear: () => ipcRenderer.invoke('activity:clear'),
+  statsDaily: () => ipcRenderer.invoke('stats:daily'),
+  updaterGetStatus: () => ipcRenderer.invoke('updater:getStatus'),
+  updaterCheck: () => ipcRenderer.invoke('updater:check'),
+  updaterDownload: () => ipcRenderer.invoke('updater:download'),
+  updaterInstall: () => ipcRenderer.invoke('updater:install'),
   winMinimize: () => ipcRenderer.send('win:minimize'),
   winMaximize: () => ipcRenderer.send('win:maximize'),
   winClose: () => ipcRenderer.send('win:close'),
   on: (channel, cb) => {
-    const ok = ['quota:updated', 'state:changed', 'theme:changed', 'win:maximized', 'activity:updated'];
+    const ok = ['quota:updated', 'state:changed', 'theme:changed', 'win:maximized', 'activity:updated', 'updater:event'];
     if (ok.includes(channel)) ipcRenderer.on(channel, (_e, payload) => cb(payload));
   },
 });

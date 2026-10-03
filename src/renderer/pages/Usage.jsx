@@ -1,18 +1,35 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UsageBars } from '../components/charts.jsx';
 import Avatar from '../components/Avatar.jsx';
 import { fmtNum, fmtToken, approxNum, fmtDate, usedToday, usedYesterday } from '../util.js';
+
+/** 本地时区 YYYY-MM-DD 日期键（offset=1 即昨天），与 store 的 daily.json 键一致 */
+function dayKey(offset = 0) {
+  const d = new Date(Date.now() - offset * 86400000);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
 
 /** 用量统计页：单账号 / 全部合并两种视图，当日 + 总计两组数字 */
 export default function Usage({ state, accounts }) {
   const currentId = state?.current?.shortId;
   const [mode, setMode] = useState('merged'); // 'merged' | 'single'
   const [selId, setSelId] = useState(null);
+  const [daily, setDaily] = useState(null); // 按日聚合（daily.json），跨 48 小时历史上限仍可看昨日/近 7 天
+
+  useEffect(() => {
+    window.buddy.statsDaily?.().then(setDaily).catch(() => {});
+  }, []);
+
+  const dailyMap = daily ? Object.fromEntries(daily.days.map((d) => [d.date, d])) : {};
+  const yesterdayDaily = dailyMap[dayKey(1)]?.total ?? null;
+  const last7 = daily ? daily.days.slice(-7) : [];
+  const max7 = Math.max(...last7.map((d) => d.total || 0), 1);
 
   const withData = accounts.filter((a) => a.quota && a.quota.percentUsed != null);
   const merged = {
     today: withData.reduce((s, a) => s + (a.todayUsed ?? usedToday(a.history) ?? 0), 0),
-    yesterday: withData.reduce((s, a) => s + (usedYesterday(a.history) || 0), 0),
+    yesterday: yesterdayDaily ?? withData.reduce((s, a) => s + (usedYesterday(a.history) || 0), 0),
     used: withData.reduce((s, a) => s + (a.quota.used || 0), 0),
     remaining: withData.reduce((s, a) => s + (a.quota.remaining || 0), 0),
     points: withData.reduce((s, a) => s + (a.history || []).length, 0),
@@ -22,6 +39,7 @@ export default function Usage({ state, accounts }) {
   const singleId = accounts.find((a) => a.id === selId) ? selId
     : (accounts.find((a) => a.id === currentId) ? currentId : accounts[0]?.id);
   const account = accounts.find((a) => a.id === singleId);
+  const yesterdaySingle = account ? (dailyMap[dayKey(1)]?.accounts?.[singleId] ?? usedYesterday(account.history)) : null;
 
   // 合并视图：按账号顺序（store 层已按名称数字升序）逐个统计
 
@@ -71,6 +89,7 @@ export default function Usage({ state, accounts }) {
             <div className="rows">
               {accounts.map((a) => {
                 const today = a.todayUsed ?? usedToday(a.history);
+                const yesterday = dailyMap[dayKey(1)]?.accounts?.[a.id] ?? usedYesterday(a.history);
                 const pct = a.quota?.percentUsed != null ? 100 - a.quota.percentUsed : null;
                 const isCurrent = a.id === currentId;
                 return (
@@ -82,15 +101,30 @@ export default function Usage({ state, accounts }) {
                       <span className="hint">{a.quota?.plan?.tier || '—'}</span>
                     </div>
                     <div className="usage-col"><span className="uc-label">今日</span><b className="uc-val">{today != null ? fmtNum(today) : '—'}</b></div>
-                    <div className="usage-col"><span className="uc-label">昨日</span><b className="uc-val">{usedYesterday(a.history) != null ? fmtNum(usedYesterday(a.history)) : '—'}</b></div>
+                    <div className="usage-col"><span className="uc-label">昨日</span><b className="uc-val">{yesterday != null ? fmtNum(yesterday) : '—'}</b></div>
                     <div className="model-bar"><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
                     <em className="usage-pct">{pct != null ? `剩${pct.toFixed(0)}%` : '—'}</em>
                   </div>
                 );
               })}
             </div>
-            <p className="hint block">「今日消耗」基于各账号的历史记录（自动轮询每 5 分钟积累一个点，保留约 48 小时），应用关闭期间不统计。</p>
+            <p className="hint block">「今日消耗」为服务器实时口径（各活跃额度当日已用之和）；「昨日 / 近 7 天」来自按日聚合存档（daily.json），应用关闭期间的数据在下次启动后仍完整保留。</p>
           </section>
+
+          {last7.length > 0 && (
+            <section className="panel">
+              <h2 style={{ marginBottom: 4 }}>近 7 天消耗（全部账号合计）</h2>
+              <div className="rows">
+                {last7.map((d) => (
+                  <div key={d.date} className="usage-row" style={{ gridTemplateColumns: 'minmax(84px, auto) 1fr minmax(90px, auto)' }}>
+                    <span className="hint">{d.date.slice(5).replace('-', '/')}{d.date === dayKey(0) ? '（今天）' : ''}</span>
+                    <div className="model-bar"><div className="model-fill" style={{ width: `${Math.max(2, ((d.total || 0) / max7) * 100)}%` }} /></div>
+                    <em className="usage-pct" style={{ fontStyle: 'normal' }}>{fmtNum(d.total)}</em>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </>
       ) : (
         <>
@@ -107,7 +141,7 @@ export default function Usage({ state, accounts }) {
             <>
               <section className="stats">
                 <div className="stat"><span className="stat-label">今日消耗</span><span className="stat-num">{account.todayUsed != null ? fmtNum(account.todayUsed) : (usedToday(account.history) != null ? fmtNum(usedToday(account.history)) : '—')}</span><span className="stat-approx">{(account.todayUsed != null || usedToday(account.history) != null) && approxNum(account.todayUsed ?? usedToday(account.history))}</span></div>
-                <div className="stat"><span className="stat-label">昨日消耗</span><span className="stat-num">{usedYesterday(account.history) != null ? fmtNum(usedYesterday(account.history)) : '—'}</span><span className="stat-approx">{usedYesterday(account.history) != null && approxNum(usedYesterday(account.history))}</span></div>
+                <div className="stat"><span className="stat-label">昨日消耗</span><span className="stat-num">{yesterdaySingle != null ? fmtNum(yesterdaySingle) : '—'}</span><span className="stat-approx">{yesterdaySingle != null && approxNum(yesterdaySingle)}</span></div>
                 <div className="stat"><span className="stat-label">剩余额度</span><span className="stat-num">{fmtNum(account.quota?.remaining)}</span><span className="stat-approx">{approxNum(account.quota?.remaining)}</span></div>
                 <div className="stat"><span className="stat-label">历史记录点</span><span className="stat-num">{(account.history || []).length}</span></div>
               </section>

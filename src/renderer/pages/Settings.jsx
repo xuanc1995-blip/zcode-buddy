@@ -75,6 +75,9 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
           <Row title="启动时立即刷新" desc="应用启动后马上进行一轮额度查询">
             <Toggle checked={draft.autoStartPolling} onChange={(v) => save({ autoStartPolling: v })} />
           </Row>
+          <Row title="自动检查更新" desc="启动及每 12 小时静默检查一次 GitHub Releases，发现新版本会通知（可在「关于」页手动操作）">
+            <Toggle checked={draft.autoCheckUpdates !== false} onChange={(v) => save({ autoCheckUpdates: v })} />
+          </Row>
         </div>
       </section>
 
@@ -83,6 +86,9 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
         <div className="rows">
           <Row title="自动切换" desc="当前账号剩余低于阈值时，自动切到剩余最多的账号（会重启 ZCode 并通知）">
             <Toggle checked={draft.autoSwitch} onChange={(v) => save({ autoSwitch: v })} />
+          </Row>
+          <Row title="热切换（实验性）" desc="切换时只重启 ZCode 的 agent 子进程、不关主窗口；检测不到自动重启或中途失败会回退完整切换。默认关闭">
+            <Toggle checked={!!draft.hotSwitch} onChange={(v) => save({ hotSwitch: v })} />
           </Row>
           <Row title="全局快捷键" desc={<><kbd className="hotkey">Ctrl+Alt+1~9</kbd> 切到第 N 个账号，应用在后台也生效</>}>
             <Toggle checked={draft.globalHotkeys} onChange={(v) => save({ globalHotkeys: v })} />

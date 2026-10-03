@@ -12,3 +12,6 @@ accounts/
 .zcode/
 
 .DS_Store
+
+# 每日消耗聚合（开发实例生成在项目根，属本地数据）
+/daily.json
