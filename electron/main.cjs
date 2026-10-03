@@ -163,6 +163,10 @@ async function pollQuotaOnce({ notify = true } = {}) {
   return results;
 }
 
+// 低额度通知去重：同一账号 60 分钟内不重复弹（轮询每 5 分钟一次，否则会连弹刷屏）
+const NOTIFY_MIN_INTERVAL_MS = 60 * 60 * 1000;
+const lastNotifyAtByAccount = new Map();
+
 function checkLowQuotaAndNotify(results, settings) {
   if (!Notification.isSupported()) return;
   const withData = results.filter(({ info }) => info && info.percentUsed != null);
@@ -170,6 +174,10 @@ function checkLowQuotaAndNotify(results, settings) {
   const curFp = fingerprint.extractCurrent();
   const cur = curFp ? withData.find(({ account }) => account.id === curFp.shortId) : null;
   if (!cur || 100 - cur.info.percentUsed >= settings.lowQuotaThreshold) return;
+
+  const now = Date.now();
+  if (now - (lastNotifyAtByAccount.get(cur.account.id) || 0) < NOTIFY_MIN_INTERVAL_MS) return;
+  lastNotifyAtByAccount.set(cur.account.id, now);
 
   const candidates = withData
     .filter(({ account, info }) => account.id !== cur.account.id && info.remaining != null

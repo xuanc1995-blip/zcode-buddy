@@ -17,6 +17,7 @@ export default function Usage({ state, accounts, showToast }) {
   const [selId, setSelId] = useState(null);
   const [daily, setDaily] = useState(null); // 按日聚合（daily.json），跨 48 小时历史上限仍可看昨日/近 7 天
   const [trendDays, setTrendDays] = useState(7); // 趋势区间：7 / 30 天
+  const [trendModel, setTrendModel] = useState('__total__'); // 趋势视角：合计或某模型
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -26,7 +27,11 @@ export default function Usage({ state, accounts, showToast }) {
   const dailyMap = daily ? Object.fromEntries(daily.days.map((d) => [d.date, d])) : {};
   const yesterdayDaily = dailyMap[dayKey(1)]?.total ?? null;
   const trend = daily ? daily.days.slice(-trendDays) : [];
-  const maxTrend = Math.max(...trend.map((d) => d.total || 0), 1);
+  // 趋势视角：合计 或 某个模型（模型清单=窗口期内出现过的，按窗口总量降序）
+  const modelNames = Object.keys(Object.assign({}, ...trend.map((d) => d.models || {})));
+  modelNames.sort((a, b) => (trend.reduce((s, d) => s + (d.models?.[b] || 0), 0)) - (trend.reduce((s, d) => s + (d.models?.[a] || 0), 0)));
+  const trendValue = (d) => (trendModel === '__total__' ? (d.total || 0) : (d.models?.[trendModel] || 0));
+  const maxTrend = Math.max(...trend.map(trendValue), 1);
 
   const doExport = async () => {
     setExporting(true);
@@ -128,8 +133,14 @@ export default function Usage({ state, accounts, showToast }) {
           {trend.length > 0 && (
             <section className="panel">
               <div className="page-head" style={{ marginBottom: 4 }}>
-                <h2>每日消耗趋势（全部账号合计）</h2>
+                <h2>每日消耗趋势{trendModel !== '__total__' ? ` · ${trendModel}` : '（全部账号合计）'}</h2>
                 <div className="row-gap">
+                  {modelNames.length > 0 && (
+                    <select value={trendModel} onChange={(e) => setTrendModel(e.target.value)} style={{ padding: '4px 8px' }}>
+                      <option value="__total__">全部模型合计</option>
+                      {modelNames.map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  )}
                   <div className="theme-switch segmented">
                     <button className={`theme-btn ${trendDays === 7 ? 'active' : ''}`} onClick={() => setTrendDays(7)}>7 天</button>
                     <button className={`theme-btn ${trendDays === 30 ? 'active' : ''}`} onClick={() => setTrendDays(30)}>30 天</button>
@@ -138,13 +149,16 @@ export default function Usage({ state, accounts, showToast }) {
                 </div>
               </div>
               <div className="rows">
-                {trend.map((d) => (
-                  <div key={d.date} className="usage-row" style={{ gridTemplateColumns: 'minmax(84px, auto) 1fr minmax(90px, auto)' }}>
-                    <span className="hint">{d.date.slice(5).replace('-', '/')}{d.date === dayKey(0) ? '（今天）' : ''}</span>
-                    <div className="model-bar"><div className="model-fill" style={{ width: `${Math.max(2, ((d.total || 0) / maxTrend) * 100)}%` }} /></div>
-                    <em className="usage-pct" style={{ fontStyle: 'normal' }}>{fmtNum(d.total)}</em>
-                  </div>
-                ))}
+                {trend.map((d) => {
+                  const v = trendValue(d);
+                  return (
+                    <div key={d.date} className="usage-row" style={{ gridTemplateColumns: 'minmax(84px, auto) 1fr minmax(90px, auto)' }}>
+                      <span className="hint">{d.date.slice(5).replace('-', '/')}{d.date === dayKey(0) ? '（今天）' : ''}</span>
+                      <div className="model-bar"><div className="model-fill" style={{ width: `${Math.max(2, (v / maxTrend) * 100)}%`, opacity: v > 0 ? 1 : 0.25 }} /></div>
+                      <em className="usage-pct" style={{ fontStyle: 'normal' }}>{fmtNum(v)}</em>
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}

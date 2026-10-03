@@ -25,7 +25,16 @@ export default function Accounts({ state, accounts, settings, busy, run, setConf
   const [nameDraft, setNamingDraft] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
   const [loginUrl, setLoginUrl] = useState(null);
+  const [loginHistory, setLoginHistory] = useState([]);
   const currentId = state?.current?.shortId;
+
+  // 登录历史：从操作记录里取登录相关事件（登录态变化/切换/回滚/添加/自动保存）
+  useEffect(() => {
+    const types = ['state-change', 'switch', 'hotswitch', 'rollback', 'login-add', 'capture'];
+    window.buddy.activityList?.().then((list) => {
+      setLoginHistory((list || []).filter((e) => types.includes(e.type)).slice(0, 8));
+    }).catch(() => {});
+  }, [accounts]);
 
   // 浏览器登录进度：主进程广播授权链接，页面内展示可点击的横幅
   useEffect(() => {
@@ -224,6 +233,20 @@ export default function Accounts({ state, accounts, settings, busy, run, setConf
             );
           })}
         </div>
+      )}
+
+      {loginHistory.length > 0 && (
+        <section className="panel">
+          <h2 style={{ marginBottom: 4 }}>登录历史</h2>
+          <div className="rows">
+            {loginHistory.map((e, i) => (
+              <div key={i} className="usage-row" style={{ gridTemplateColumns: 'minmax(120px, auto) 1fr' }}>
+                <span className="hint">{fmtDate(e.t)}</span>
+                <span style={{ fontSize: 12.5 }}>{e.message}</span>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );

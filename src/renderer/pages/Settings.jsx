@@ -55,7 +55,7 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
       <section className="panel">
         <h2><IconKey size={15} /> 提醒与轮询</h2>
         <div className="rows">
-          <Row title="低额度阈值" desc={`剩余低于该值时发送 Windows 通知`}>
+          <Row title="低额度阈值" desc={`剩余低于该值时发送 Windows 通知（同一账号每小时最多提醒一次，避免刷屏）`}>
             <input
               type="range" min={1} max={50} value={draft.lowQuotaThreshold}
               onChange={(e) => setDraft({ ...draft, lowQuotaThreshold: Number(e.target.value) })}

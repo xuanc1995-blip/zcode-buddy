@@ -31,16 +31,25 @@ function readDailyRaw() {
 
 /**
  * 记录一个账号的当日消耗观察值（额度轮询时调用，同一天同一账号反复覆盖=取最后一次观察）。
+ * @param {{models?:Record<string,number>, now?:number}} opts models: 分模型当日用量（与 todayUsed 同一口径）
  * 注意：应用不运行时没有观察值，某天有记录代表当天至少轮询过一次。
  */
-function recordDailySample(accountId, todayUsed, { now = Date.now() } = {}) {
+function recordDailySample(accountId, todayUsed, { models, now = Date.now() } = {}) {
   if (todayUsed == null || !accountId) return false;
   const data = readDailyRaw();
   const key = localDateKey(now);
   const day = data.days[key] || { accounts: {} };
   day.accounts = day.accounts || {};
-  day.accounts[accountId] = Math.max(0, Number(todayUsed) || 0);
-  day.total = Object.values(day.accounts).reduce((s, v) => s + v, 0);
+  const entry = { total: Math.max(0, Number(todayUsed) || 0) };
+  if (models && Object.keys(models).length > 0) {
+    const clean = {};
+    for (const [name, used] of Object.entries(models)) {
+      if (name && used != null) clean[name] = Math.max(0, Number(used) || 0);
+    }
+    if (Object.keys(clean).length > 0) entry.models = clean;
+  }
+  day.accounts[accountId] = entry;
+  day.total = Object.values(day.accounts).reduce((s, v) => s + (typeof v === 'object' ? v.total : v), 0);
   data.days[key] = day;
   data.updatedAt = now;
 
@@ -56,11 +65,29 @@ function recordDailySample(accountId, todayUsed, { now = Date.now() } = {}) {
   }
 }
 
-/** 读取最近 N 天（默认 14）的每日消耗，按日期升序返回 [{date, total, accounts}] */
+/** 旧版 daily.json 的账号值是纯数字，统一规范化为 {total, models} */
+function normalizeAccountEntry(v) {
+  if (v && typeof v === 'object') return { total: v.total ?? null, models: v.models || {} };
+  return { total: v ?? null, models: {} };
+}
+
+/** 读取最近 N 天（默认 14）的每日消耗，按日期升序返回。
+ *  每天形如 {date, total, accounts:{id:{total,models}}, models:{模型名:当日用量(跨账号合计)}} */
 function readDailySummary({ days = 14 } = {}) {
   const data = readDailyRaw();
   const keys = Object.keys(data.days).sort().slice(-Math.max(1, days));
-  return keys.map((k) => ({ date: k, total: data.days[k].total ?? null, accounts: data.days[k].accounts || {} }));
+  return keys.map((k) => {
+    const accounts = {};
+    const models = {};
+    let total = 0;
+    for (const [id, v] of Object.entries(data.days[k].accounts || {})) {
+      const entry = normalizeAccountEntry(v);
+      accounts[id] = entry;
+      total += entry.total || 0;
+      for (const [name, used] of Object.entries(entry.models || {})) models[name] = (models[name] || 0) + used;
+    }
+    return { date: k, total: Object.keys(accounts).length ? total : (data.days[k].total ?? null), accounts, models };
+  });
 }
 
 /** 某日期（默认昨日）的消耗：all=合计，accountId 指定则返回该账号的 */
@@ -68,7 +95,9 @@ function readDailyUsed(dateKey, accountId) {
   const data = readDailyRaw();
   const day = data.days[dateKey];
   if (!day) return null;
-  return accountId ? (day.accounts[accountId] ?? null) : (day.total ?? null);
+  if (!accountId) return day.total ?? null;
+  const v = day.accounts[accountId];
+  return v == null ? null : (typeof v === 'object' ? (v.total ?? null) : v);
 }
 
 function ensureStore() {
@@ -209,14 +238,17 @@ function saveQuota(id, quota, { tokenStatus } = {}) {
   // 这些额度每日续期，used 计数随续期清零，服务器报的 used 即当日用量（跨零点自动重新起算）。
   if (quota && Array.isArray(quota.items)) {
     let todayUsed = null;
+    const models = {};
     for (const it of quota.items) {
       if (it.used == null) continue;
-      todayUsed = (todayUsed ?? 0) + Math.max(0, it.used);
+      const used = Math.max(0, it.used);
+      todayUsed = (todayUsed ?? 0) + used;
+      if (it.name) models[it.name] = (models[it.name] || 0) + used;
     }
     account.todayUsed = todayUsed;
     account.todayUsedAt = Date.now();
     // 落盘到每日聚合（历史点只保留 48 小时，按日聚合让昨日/近 7 天趋势不依赖应用连续在线）
-    recordDailySample(id, todayUsed);
+    recordDailySample(id, todayUsed, { models });
   }
   writeAccount(account);
 }

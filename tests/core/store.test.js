@@ -131,13 +131,37 @@ describe('store：每日聚合（daily.json）', () => {
     assert.equal(days.length, 1);
     assert.equal(days[0].date, today);
     assert.equal(days[0].total, 170.5);
-    assert.equal(days[0].accounts['acc-1'], 120);
+    assert.equal(days[0].accounts['acc-1'].total, 120);
+  });
+
+  test('旧版 daily.json（账号值为纯数字）读出时自动规范化', () => {
+    const key = store.localDateKey(now - DAY);
+    fs.writeFileSync(store.DAILY_FILE, JSON.stringify({
+      version: 1,
+      days: { [key]: { accounts: { 'old-acc': 88 }, total: 88 } },
+    }), 'utf8');
+    const days = store.readDailySummary({ days: 7 });
+    const day = days.find((d) => d.date === key);
+    assert.equal(day.total, 88);
+    assert.deepEqual(day.accounts['old-acc'], { total: 88, models: {} });
+  });
+
+  test('分模型用量：跨账号聚合到 day.models', () => {
+    fs.rmSync(store.DAILY_FILE, { force: true });
+    store.recordDailySample('acc-1', 100, { now, models: { 'GLM-5.3': 60, 'GLM-4.6': 40 } });
+    store.recordDailySample('acc-2', 10, { now, models: { 'GLM-5.3': 10 } });
+
+    const days = store.readDailySummary({ days: 7 });
+    assert.equal(days.length, 1);
+    assert.equal(days[0].total, 110);
+    assert.deepEqual(days[0].models, { 'GLM-5.3': 70, 'GLM-4.6': 40 });
+    assert.deepEqual(days[0].accounts['acc-1'].models, { 'GLM-5.3': 60, 'GLM-4.6': 40 });
   });
 
   test('readDailyUsed：按日期/按账号读取，缺失返回 null', () => {
     const today = store.localDateKey(now);
-    assert.equal(store.readDailyUsed(today), 170.5);
-    assert.equal(store.readDailyUsed(today, 'acc-2'), 50.5);
+    assert.equal(store.readDailyUsed(today), 110);
+    assert.equal(store.readDailyUsed(today, 'acc-2'), 10);
     assert.equal(store.readDailyUsed(today, 'nobody'), null);
     assert.equal(store.readDailyUsed('1999-01-01'), null);
   });
