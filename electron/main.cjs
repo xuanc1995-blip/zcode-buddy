@@ -285,6 +285,7 @@ function registerIpc() {
     return { canceled: false, ...result };
   });
 
+  ipcMain.handle('theme:current', () => effectiveTheme());
   ipcMain.handle('activity:list', () => readActivity());
   ipcMain.handle('activity:clear', () => { try { fs.rmSync(activityFile(), { force: true }); } catch (_) {} return []; });
   ipcMain.handle('app:openPath', (_e, p) => shell.openPath(p));
@@ -342,6 +343,11 @@ function applyTheme(theme) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('theme:changed', effective);
   }
+  return effective;
+}
+
+function effectiveTheme() {
+  return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
 }
 
 /** 全局快捷键：Ctrl+Alt+1~9 切到第 N 个账号（按账号列表顺序） */

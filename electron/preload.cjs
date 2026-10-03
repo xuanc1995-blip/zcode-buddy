@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('buddy', {
   importData: (passphrase) => ipcRenderer.invoke('data:import', passphrase),
   openPath: (p) => ipcRenderer.invoke('app:openPath', p),
   getVersion: () => ipcRenderer.invoke('app:version'),
+  getTheme: () => ipcRenderer.invoke('theme:current'),
   activityList: () => ipcRenderer.invoke('activity:list'),
   activityClear: () => ipcRenderer.invoke('activity:clear'),
   winMinimize: () => ipcRenderer.send('win:minimize'),

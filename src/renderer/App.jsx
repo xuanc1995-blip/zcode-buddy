@@ -47,10 +47,12 @@ export default function App() {
 
   useEffect(() => {
     reload();
+    // 首帧用渲染进程自身的系统偏好着色（matchMedia 会跟随 nativeTheme），避免闪错主题
+    document.documentElement.dataset.theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    // 再向主进程要一次权威值（首次广播可能早于本页监听器注册）
+    window.buddy.getTheme().then((t) => { document.documentElement.dataset.theme = t; });
     window.buddy.getSettings().then((s) => {
       setSettings(s);
-      // 'system' 的实际生效色由主进程通过 theme:changed 事件下发，这里先给个即时初值
-      document.documentElement.dataset.theme = s.theme === 'light' ? 'light' : 'dark';
       applyAppearance(s);
     });
     window.buddy.getVersion().then(setVersion);
