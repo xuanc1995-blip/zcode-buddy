@@ -30,17 +30,22 @@ export function fmtExpiry(ts) {
   return `${days} 天后到期`;
 }
 
-/** 今日消耗：history 里今天最早的 remaining 与最新 remaining 的差值 */
+/** 今日消耗：今天之内相邻历史点之间「剩余量下降」的累加（与消耗柱状图同口径；
+ *  额度刷新导致的剩余上涨自动跳过，不会把当日消耗错误地记为 0） */
 export function usedToday(history) {
   const pts = (history || []).filter((h) => h && h.remaining != null);
   if (pts.length < 2) return null;
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  const todays = pts.filter((h) => h.t >= todayStart.getTime());
-  if (todays.length < 1) return null;
-  const base = todays[0].remaining;
-  const now = pts[pts.length - 1].remaining;
-  return Math.max(0, base - now);
+  let sum = 0, has = false, prev = null;
+  for (const p of pts) {
+    if (prev != null && p.t >= todayStart.getTime()) {
+      const drop = prev - p.remaining;
+      if (drop > 0) { sum += drop; has = true; }
+    }
+    prev = p.remaining;
+  }
+  return has ? sum : null;
 }
 
 /** 数字滚动动画（缓出），value 为 null 时返回 null */
