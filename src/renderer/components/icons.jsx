@@ -45,6 +45,8 @@ export const IconHeart = (p) => <I {...p}><path d="M19 14c1.49-1.46 3-3.21 3-5.5
 export const IconMin = (p) => <I {...p}><path d="M5 12h14" /></I>;
 export const IconMax = (p) => <I {...p}><rect x="5" y="5" width="14" height="14" rx="1.5" /></I>;
 export const IconRestore = (p) => <I {...p}><rect x="8" y="8" width="11" height="11" rx="1.5" /><path d="M5.5 15.5V6.5a1 1 0 0 1 1-1h9" /></I>;
+export const IconChart = (p) => <I {...p}><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></I>;
+export const IconHistory = (p) => <I {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></I>;
 export const IconLayers = (p) => <I {...p}><path d="m12 2 8.5 4.5L12 11 3.5 6.5 12 2z" /><path d="m3.5 11.5 8.5 4.5 8.5-4.5" /><path d="m3.5 16.5 8.5 4.5 8.5-4.5" /></I>;
 export const IconFlame = (p) => <I {...p}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></I>;
 export const IconCalendar = (p) => <I {...p}><path d="M8 2v4" /><path d="M16 2v4" /><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M3 10h18" /></I>;

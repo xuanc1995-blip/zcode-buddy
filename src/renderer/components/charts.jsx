@@ -4,8 +4,9 @@ import { fmtNum } from '../util.js';
 /**
  * 消耗柱状图：每根柱 = 两次刷新之间的用量（remaining 差值）。
  * history=[{t,remaining}]，取最近 maxBars 点，悬停显示时间与消耗量。
+ * full=true 时宽度自适应容器（SVG viewBox 缩放，悬停坐标做换算）。
  */
-export function UsageBars({ history, width = 230, height = 72, maxBars = 28 }) {
+export function UsageBars({ history, width = 230, height = 72, maxBars = 28, full = false }) {
   const wrapRef = useRef(null);
   const [hover, setHover] = useState(null); // {x, y, w, h, bar}
 
@@ -47,7 +48,8 @@ export function UsageBars({ history, width = 230, height = 72, maxBars = 28 }) {
 
   const onMove = (e) => {
     const rect = wrapRef.current.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
+    const scale = full && rect.width > 0 ? width / rect.width : 1; // 满宽模式下鼠标坐标 → 逻辑坐标
+    const mx = (e.clientX - rect.left) * scale;
     let nearest = geom.rects[0];
     for (const r of geom.rects) {
       const cx = r.x + r.w / 2;
@@ -57,8 +59,14 @@ export function UsageBars({ history, width = 230, height = 72, maxBars = 28 }) {
   };
 
   return (
-    <div className="spark-wrap" ref={wrapRef} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
-      <svg className="spark" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+    <div className="spark-wrap" style={full ? { width: '100%' } : undefined} ref={wrapRef} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+      <svg
+        className="spark"
+        width={full ? '100%' : width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio={full ? 'none' : 'xMidYMid meet'}
+      >
         <defs>
           <linearGradient id="usageBarGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" className="spark-stop-a" />
@@ -75,18 +83,23 @@ export function UsageBars({ history, width = 230, height = 72, maxBars = 28 }) {
         ))}
         <line x1="0" y1={height - PAD_BOTTOM} x2={width} y2={height - PAD_BOTTOM} className="usage-base" />
       </svg>
-      {hover && (
-        <div
-          className="spark-tip"
-          style={{
-            left: Math.max(4, Math.min(width - 110, hover.x + hover.w / 2 - 55)),
-            top: Math.max(0, hover.y - 46),
-          }}
-        >
-          <b>消耗 {fmtNum(hover.bar.used)}</b>
-          <span>{new Date(hover.bar.t).toLocaleString('zh-CN', { hour12: false, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
-      )}
+      {hover && (() => {
+        const rect = wrapRef.current ? wrapRef.current.getBoundingClientRect() : { width };
+        const rscale = full && rect.width > 0 ? width / rect.width : 1; // 逻辑坐标 → 渲染像素
+        const leftPx = (hover.x + hover.w / 2) / rscale - 55;
+        return (
+          <div
+            className="spark-tip"
+            style={{
+              left: Math.max(4, Math.min(rect.width - 110, leftPx)),
+              top: Math.max(0, hover.y - 46),
+            }}
+          >
+            <b>消耗 {fmtNum(hover.bar.used)}</b>
+            <span>{new Date(hover.bar.t).toLocaleString('zh-CN', { hour12: false, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+        );
+      })()}
     </div>
   );
 }

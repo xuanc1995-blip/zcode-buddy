@@ -93,6 +93,7 @@ async function pollQuotaOnce({ notify = true } = {}) {
           .sort((a, b) => b.info.remaining - a.info.remaining)[0];
         if (best) {
           await switchToId(best.account.id);
+          logActivity('autoswitch', `额度不足自动切换到「${best.account.name}」`);
           if (Notification.isSupported()) {
             new Notification({
               title: '已自动切换账号',
@@ -125,6 +126,7 @@ function checkLowQuotaAndNotify(results, settings) {
   const body = best
     ? `剩余 ${curRemainingPct.toFixed(1)}%，点击切换到「${best.account.name}」（剩 ${formatNum(best.info.remaining)}）`
     : `剩余 ${curRemainingPct.toFixed(1)}%，其他账号额度也不足，请等待每日额度刷新或充值`;
+  logActivity('notify', `低额度提醒：当前账号「${cur.account.name}」剩余 ${curRemainingPct.toFixed(1)}%`);
   const notification = new Notification({ title: `当前账号额度不足：${cur.account.name}`, body, silent: false });
   if (best) notification.on('click', () => {
     switchToId(best.account.id).catch(() => {});
@@ -142,6 +144,7 @@ async function switchToId(id) {
     { restart: true },
   );
   store.touch(id);
+  logActivity('switch', `切换到「${account.name}」`);
   broadcast('state:changed');
   return result;
 }
@@ -177,25 +180,20 @@ function registerIpc() {
 
   ipcMain.handle('account:capture', (_e, name) => {
     const r = store.captureCurrent({ name: name || undefined });
+    logActivity('capture', `保存快照「${r.account.name}」`);
     applyGlobalHotkeys(loadSettings().globalHotkeys);
     return r;
   });
 
   ipcMain.handle('account:use', async (_e, id) => {
-    const account = store.findAccount(String(id || ''));
-    if (!account) throw new Error(`找不到账号：${id}`);
-    const result = await switcher.applyState(
-      { credentials: account.credentials, config: account.config },
-      { restart: true },
-    );
-    store.touch(account.id);
-    broadcast('state:changed');
-    return result;
+    // 与托盘/通知共用 switchToId，保证操作记录、热键等口径一致
+    return switchToId(String(id || ''));
   });
 
   ipcMain.handle('account:rename', (_e, { id, name }) => store.renameAccount(id, name));
   ipcMain.handle('account:delete', (_e, id) => {
     const r = store.deleteAccount(id);
+    logActivity('delete', `删除快照「${(store.readAccount(id) || {}).name || id}」`);
     applyGlobalHotkeys(loadSettings().globalHotkeys);
     return r;
   });
@@ -229,6 +227,7 @@ function registerIpc() {
 
   ipcMain.handle('switch:rollback', async () => {
     const result = await switcher.rollback({ restart: true });
+    logActivity('rollback', '回滚到上次切换前的登录态');
     broadcast('state:changed');
     return result;
   });
@@ -269,6 +268,7 @@ function registerIpc() {
     });
     if (canceled || !filePath) return { canceled: true };
     const count = exporter.exportToFile(filePath, passphrase);
+    logActivity('export', `导出 ${count} 个账号到备份文件`);
     return { canceled: false, filePath, count };
   });
 
@@ -280,10 +280,13 @@ function registerIpc() {
     });
     if (canceled || filePaths.length === 0) return { canceled: true };
     const result = exporter.importFromFile(filePaths[0], passphrase);
+    logActivity('import', `导入备份：新增 ${result.imported} 个`);
     broadcast('quota:updated');
     return { canceled: false, ...result };
   });
 
+  ipcMain.handle('activity:list', () => readActivity());
+  ipcMain.handle('activity:clear', () => { try { fs.rmSync(activityFile(), { force: true }); } catch (_) {} return []; });
   ipcMain.handle('app:openPath', (_e, p) => shell.openPath(p));
   ipcMain.handle('app:version', () => app.getVersion());
 
@@ -300,6 +303,35 @@ function readSettingsForRenderer() {
   const s = loadSettings();
   s.autoLaunch = app.getLoginItemSettings().openAtLogin;
   return s;
+}
+
+// ---------------------------------------------------------------------------
+// 操作记录（userData/activity.jsonl，保留最近 500 条）
+// ---------------------------------------------------------------------------
+const ACTIVITY_MAX = 500;
+
+function activityFile() {
+  return path.join(app.getPath('userData'), 'activity.jsonl');
+}
+
+function logActivity(type, message) {
+  try {
+    fs.appendFileSync(activityFile(), JSON.stringify({ t: Date.now(), type, message }) + '\n', 'utf8');
+    broadcast('activity:updated');
+  } catch (_) {}
+}
+
+function readActivity() {
+  try {
+    return fs.readFileSync(activityFile(), 'utf8')
+      .trim().split('\n').filter(Boolean)
+      .slice(-ACTIVITY_MAX)
+      .map((l) => { try { return JSON.parse(l); } catch (_) { return null; } })
+      .filter(Boolean)
+      .reverse();
+  } catch (_) {
+    return [];
+  }
 }
 
 function applyTheme(theme) {

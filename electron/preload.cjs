@@ -18,11 +18,13 @@ contextBridge.exposeInMainWorld('buddy', {
   importData: (passphrase) => ipcRenderer.invoke('data:import', passphrase),
   openPath: (p) => ipcRenderer.invoke('app:openPath', p),
   getVersion: () => ipcRenderer.invoke('app:version'),
+  activityList: () => ipcRenderer.invoke('activity:list'),
+  activityClear: () => ipcRenderer.invoke('activity:clear'),
   winMinimize: () => ipcRenderer.send('win:minimize'),
   winMaximize: () => ipcRenderer.send('win:maximize'),
   winClose: () => ipcRenderer.send('win:close'),
   on: (channel, cb) => {
-    const ok = ['quota:updated', 'state:changed', 'theme:changed', 'win:maximized'];
+    const ok = ['quota:updated', 'state:changed', 'theme:changed', 'win:maximized', 'activity:updated'];
     if (ok.includes(channel)) ipcRenderer.on(channel, (_e, payload) => cb(payload));
   },
 });

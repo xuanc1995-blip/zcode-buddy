@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { IconZap, IconGauge, IconUsers, IconSettings, IconMin, IconMax, IconRestore, IconX } from './components/icons.jsx';
+import { IconZap, IconGauge, IconUsers, IconSettings, IconMin, IconMax, IconRestore, IconX, IconChart, IconHistory, IconInfo } from './components/icons.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import Usage from './pages/Usage.jsx';
+import Activity from './pages/Activity.jsx';
+import About from './pages/About.jsx';
 import Accounts from './pages/Accounts.jsx';
 import SettingsPage from './pages/Settings.jsx';
 import Toast from './components/Toast.jsx';
@@ -9,7 +12,10 @@ import ConfirmDialog from './components/ConfirmDialog.jsx';
 const NAV = [
   { id: 'dashboard', label: '仪表盘', icon: IconGauge },
   { id: 'accounts', label: '账号管理', icon: IconUsers },
+  { id: 'usage', label: '用量统计', icon: IconChart },
+  { id: 'activity', label: '操作记录', icon: IconHistory },
   { id: 'settings', label: '设置', icon: IconSettings },
+  { id: 'about', label: '关于', icon: IconInfo },
 ];
 
 function applyAppearance(s) {
@@ -130,7 +136,10 @@ export default function App() {
         <div className="content">
           {page === 'dashboard' && <Dashboard {...ctx} />}
           {page === 'accounts' && <Accounts {...ctx} />}
+          {page === 'usage' && <Usage {...ctx} />}
+          {page === 'activity' && <Activity {...ctx} />}
           {page === 'settings' && <SettingsPage {...ctx} />}
+          {page === 'about' && <About {...ctx} />}
         </div>
       </main>
 

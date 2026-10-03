@@ -492,3 +492,25 @@ body::before {
 .mc-bar { height: 8px; background: var(--ring-track); border-radius: 99px; overflow: hidden; }
 .mc-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--ok)); border-radius: 99px; transition: width .4s ease; }
 .mc-foot { font-size: 11.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+
+/* ============ 用量统计 / 操作记录 ============ */
+.usage-hero { gap: 26px; }
+.usage-side { display: flex; align-items: center; gap: 14px; flex: 0 0 220px; }
+.usage-side-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.usage-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex: 1; }
+.activity-list { display: flex; flex-direction: column; }
+.activity-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 4px; font-size: 13px; border-bottom: 1px solid var(--panel-line);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-type {
+  flex-shrink: 0; font-size: 11px; padding: 2px 9px; border-radius: 999px;
+  background: rgba(108, 123, 255, 0.15); color: var(--accent);
+}
+.activity-type.t-notify, .activity-type.t-autoswitch { background: rgba(245, 166, 35, 0.15); color: var(--warn); }
+.activity-type.t-delete, .activity-type.t-rollback { background: rgba(255, 92, 108, 0.14); color: var(--bad); }
+.activity-type.t-export, .activity-type.t-import { background: rgba(62, 207, 142, 0.14); color: var(--ok); }
+.activity-msg { flex: 1; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-time { flex-shrink: 0; color: var(--text-faint); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.about-hero { display: flex; align-items: center; gap: 14px; }

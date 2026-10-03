@@ -139,12 +139,6 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
         </div>
       </section>
 
-      <section className="panel about">
-        <h2><IconInfo size={15} /> 关于</h2>
-        <p>ZCode Buddy — 开源的 ZCode 多账号快捷切换与额度管理工具（MIT License）。</p>
-        <p className="hint">原理：切换 = 备份并替换 <code>~\.zcode\v2\</code> 下的登录态文件；额度通过 ZCode billing 接口实时查询。本工具与 ZCode / 智谱官方无任何隶属关系，请遵守对应服务条款。</p>
-        <p className="hint">设计参考了 WorkDaddy、zcode-account-switcher、ZCodex-Manager、workbuddy-switch 等优秀开源项目，感谢社区。<IconHeart size={12} /></p>
-      </section>
     </div>
   );
 }
