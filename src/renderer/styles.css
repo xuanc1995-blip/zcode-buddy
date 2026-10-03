@@ -200,12 +200,6 @@ body::before {
 .hero-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
 .hrow { display: flex; align-items: center; gap: 8px; color: var(--text-dim); font-size: 13px; }
 .hrow svg { color: var(--accent); flex-shrink: 0; }
-.hero-models { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; max-width: 470px; }
-.hero-models .model-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; width: 100%; box-sizing: border-box; }
-.hero-models .model-name { flex: 0 0 122px; }
-.hero-models .model-bar { flex: 1 1 auto; min-width: 60px; height: 8px; background: rgba(108, 123, 255, 0.16); }
-.hero-models .model-pct { flex: 0 0 42px; text-align: right; font-style: normal; font-weight: 700; font-size: 12.5px; color: var(--text); }
-.hero-models .model-rem { flex: 0 0 92px; text-align: right; font-style: normal; font-size: 11.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .card-models { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
 .card-models .model-row { grid-template-columns: 112px 1fr auto; }
 .model-row {
@@ -225,14 +219,6 @@ body::before {
 .model-bar { height: 6px; background: var(--ring-track); border-radius: 99px; overflow: hidden; }
 .model-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--ok)); border-radius: 99px; transition: width .4s ease; }
 .model-num { color: var(--text-faint); font-variant-numeric: tabular-nums; }
-.all-chip {
-  border: 1px solid var(--panel-line); background: var(--panel-solid); color: var(--text-dim);
-  font-size: 11px; padding: 3px 12px; border-radius: 999px; cursor: pointer; transition: all .15s ease;
-}
-.all-chip:hover { color: var(--text); border-color: var(--accent); }
-.all-chip.active {
-  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border-color: transparent;
-}
 .hero-ring { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .hero-trend { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
 .hero-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; padding: 26px 0; color: var(--text-dim); }
@@ -476,3 +462,23 @@ body::before {
 }
 .toast.err { border-color: var(--bad); }
 .busy-mask { position: fixed; inset: 0; background: rgba(5, 5, 10, 0.25); cursor: progress; z-index: 40; }
+
+/* ============ 模型额度卡片 ============ */
+.model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.model-card {
+  background: var(--panel); border: 1px solid var(--panel-line); border-radius: 14px;
+  padding: 14px 16px; cursor: pointer; text-align: left; color: var(--text);
+  display: flex; flex-direction: column; gap: 9px; transition: all .15s ease; backdrop-filter: blur(12px);
+}
+.model-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.model-card > * { width: 100%; box-sizing: border-box; }
+.model-card.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset, 0 10px 26px -14px rgba(108, 123, 255, 0.55);
+}
+.mc-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.mc-name { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-pct { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.mc-bar { height: 8px; background: var(--ring-track); border-radius: 99px; overflow: hidden; }
+.mc-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--ok)); border-radius: 99px; transition: width .4s ease; }
+.mc-foot { font-size: 11.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }

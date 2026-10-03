@@ -106,27 +106,6 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
                 <div className="hrow"><IconFlame size={14} /><span>已用 <b>{fmtNum(current.quota?.used)}</b>{current.quota?.percentUsed != null && `（${current.quota.percentUsed.toFixed(1)}%）`}</span></div>
                 <div className="hrow"><IconCalendar size={14} /><span>今日消耗 <b className="today-used">{todayUsed != null ? fmtNum(todayUsed) : '—'}</b></span></div>
               </div>
-              {current.quota && !current.quota.isEmpty && models.length > 0 && (
-                <div className="hero-models">
-                  {models.map((it, i) => {
-                    const pct = it.total ? Math.max(0, Math.min(100, ((it.remaining ?? 0) / it.total) * 100)) : null;
-                    const active = selModel === 'all' ? false : (selModel == null ? autoIdx === i : selModel === i);
-                    return (
-                      <button
-                        key={i}
-                        className={`model-row clickable ${active ? 'active' : ''}`}
-                        onClick={() => setSelModel(selModel === i ? 'all' : i)}
-                        title="点击在环形表中显示该模型"
-                      >
-                        <span className="model-name">{it.name}</span>
-                        <div className="model-bar"><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
-                        <em className="model-pct">{pct != null ? `${pct.toFixed(0)}%` : '—'}</em>
-                        <em className="model-rem">{fmtNum(it.remaining)}</em>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
             </div>
             <div className="hero-trend">
               <span className="sec-label">消耗趋势 · 每根柱 = 两次刷新间的用量（悬停查看）</span>
@@ -142,6 +121,38 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
           </div>
         )}
       </section>
+
+      {/* 模型额度卡片：点击切换环形表口径 */}
+      {current && models.length > 0 && !current.quota?.isEmpty && (
+        <section>
+          <span className="sec-label">模型额度（点击卡片，环形表跟随显示该模型）</span>
+          <div className="model-grid">
+            <button
+              className={`model-card ${selModel === 'all' ? 'active' : ''}`}
+              onClick={() => setSelModel(selModel === 'all' ? null : 'all')}
+            >
+              <div className="mc-head"><span className="mc-name">全部合计</span><span className="mc-pct">{remainingPct != null ? `${remainingPct.toFixed(0)}%` : '—'}</span></div>
+              <div className="mc-bar"><div className="mc-fill" style={{ width: remainingPct != null ? `${remainingPct}%` : '0%' }} /></div>
+              <div className="mc-foot">剩 {fmtNum(current.quota?.remaining)} / {fmtNum(current.quota?.total)}</div>
+            </button>
+            {models.map((it, i) => {
+              const pct = it.total ? Math.max(0, Math.min(100, ((it.remaining ?? 0) / it.total) * 100)) : null;
+              const active = selModel === 'all' ? false : (selModel == null ? autoIdx === i : selModel === i);
+              return (
+                <button
+                  key={i}
+                  className={`model-card ${active ? 'active' : ''}`}
+                  onClick={() => setSelModel(selModel === i ? 'all' : i)}
+                >
+                  <div className="mc-head"><span className="mc-name">{it.name}</span><span className="mc-pct">{pct != null ? `${pct.toFixed(0)}%` : '—'}</span></div>
+                  <div className="mc-bar"><div className="mc-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
+                  <div className="mc-foot">剩 {fmtNum(it.remaining)} / {fmtNum(it.total)}</div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* 汇总统计 */}
       <section className="stats">
