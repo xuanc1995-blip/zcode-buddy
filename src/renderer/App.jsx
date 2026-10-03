@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { IconZap, IconGauge, IconUsers, IconSettings } from './components/icons.jsx';
+import { IconZap, IconGauge, IconUsers, IconSettings, IconMin, IconMax, IconRestore, IconX } from './components/icons.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Accounts from './pages/Accounts.jsx';
 import SettingsPage from './pages/Settings.jsx';
@@ -26,6 +26,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [toast, setToast] = useState(null);
+  const [maximized, setMaximized] = useState(false);
 
   const showToast = useCallback((text, kind = 'ok') => {
     setToast({ text, kind });
@@ -52,6 +53,7 @@ export default function App() {
     window.buddy.on('theme:changed', (t) => {
       document.documentElement.dataset.theme = t || 'dark';
     });
+    window.buddy.on('win:maximized', setMaximized);
     const t = setInterval(reload, 10 * 1000);
     return () => clearInterval(t);
   }, [reload]);
@@ -112,7 +114,19 @@ export default function App() {
       </aside>
 
       <main className="main-col">
-        <div className="titlebar" />
+        <div className="titlebar">
+          <div className="win-controls">
+            <button className="win-btn" title="最小化" onClick={() => window.buddy.winMinimize()}>
+              <IconMin size={14} />
+            </button>
+            <button className="win-btn" title={maximized ? '还原' : '最大化'} onClick={() => window.buddy.winMaximize()}>
+              {maximized ? <IconRestore size={13} /> : <IconMax size={13} />}
+            </button>
+            <button className="win-btn close" title="关闭（最小化到托盘）" onClick={() => window.buddy.winClose()}>
+              <IconX size={14} />
+            </button>
+          </div>
+        </div>
         <div className="content">
           {page === 'dashboard' && <Dashboard {...ctx} />}
           {page === 'accounts' && <Accounts {...ctx} />}

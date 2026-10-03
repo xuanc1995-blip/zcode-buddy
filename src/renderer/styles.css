@@ -125,13 +125,23 @@ body::before {
 .content::-webkit-scrollbar { width: 10px; }
 .content::-webkit-scrollbar-thumb { background: rgba(128, 128, 160, 0.25); border-radius: 5px; }
 
-/* 无边框窗口：自定义标题栏拖拽区（右上角是系统 overlay 三键） */
+/* 无边框窗口：自定义标题栏（拖拽区 + 自绘控制键，颜色完全跟随主题） */
 .main-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .titlebar {
-  height: 34px; flex-shrink: 0;
+  height: 36px; flex-shrink: 0;
   -webkit-app-region: drag;
   user-select: none;
+  display: flex; align-items: center; justify-content: flex-end;
 }
+.win-controls { display: flex; height: 100%; -webkit-app-region: no-drag; }
+.win-btn {
+  width: 46px; height: 100%; display: grid; place-items: center;
+  border: none; background: transparent; color: var(--text-dim);
+  cursor: pointer; transition: background .15s ease, color .15s ease;
+}
+.win-btn:hover { background: rgba(255, 255, 255, 0.09); color: var(--text); }
+:root[data-theme='light'] .win-btn:hover { background: rgba(20, 20, 40, 0.08); }
+.win-btn.close:hover { background: var(--bad); color: #fff; }
 
 /* ============ 页面通用 ============ */
 .page { display: flex; flex-direction: column; gap: 18px; max-width: 980px; margin: 0 auto; animation: fadeUp .25s ease; }

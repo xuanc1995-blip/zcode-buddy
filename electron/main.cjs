@@ -286,6 +286,14 @@ function registerIpc() {
 
   ipcMain.handle('app:openPath', (_e, p) => shell.openPath(p));
   ipcMain.handle('app:version', () => app.getVersion());
+
+  // 自绘窗口控制键
+  ipcMain.on('win:minimize', () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize(); });
+  ipcMain.on('win:maximize', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMaximized()) mainWindow.unmaximize(); else mainWindow.maximize();
+  });
+  ipcMain.on('win:close', () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide(); });
 }
 
 function readSettingsForRenderer() {
@@ -301,9 +309,6 @@ function applyTheme(theme) {
   const effective = nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('theme:changed', effective);
-    try {
-      mainWindow.setTitleBarOverlay({ color: '#00000000', symbolColor: effective === 'light' ? '#1b1c2e' : '#ecedf5', height: 34 });
-    } catch (_) {}
   }
 }
 
@@ -351,7 +356,6 @@ function createWindow() {
     transparent: currentTransparent,
     backgroundMaterial: currentTransparent ? 'acrylic' : undefined,
     titleBarStyle: 'hidden',
-    titleBarOverlay: { color: '#00000000', symbolColor: '#ecedf5', height: 34 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -390,6 +394,9 @@ function createWindow() {
     lastFocusPoll = now;
     pollQuotaOnce({ notify: false }).catch(() => {});
   });
+
+  mainWindow.on('maximize', () => broadcast('win:maximized', true));
+  mainWindow.on('unmaximize', () => broadcast('win:maximized', false));
 
   mainWindow.on('close', (e) => {
     // 关窗=最小化到托盘，真正退出走托盘菜单/Alt+F4 确认
