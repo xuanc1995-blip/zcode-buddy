@@ -87,7 +87,7 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
           <Row title="自动切换" desc="当前账号剩余低于阈值时，自动切到剩余最多的账号（会重启 ZCode 并通知）">
             <Toggle checked={draft.autoSwitch} onChange={(v) => save({ autoSwitch: v })} />
           </Row>
-          <Row title="热切换（实验性）" desc="切换时只重启 ZCode 的 agent 子进程、不关主窗口；检测不到自动重启或中途失败会回退完整切换。默认关闭">
+          <Row title="热切换" desc="切换时只重启 ZCode 的会话进程（agent）、不关主窗口；会话在下次使用时自动以新账号拉起，失败自动回退完整重启。关闭后始终走完整重启切换">
             <Toggle checked={!!draft.hotSwitch} onChange={(v) => save({ hotSwitch: v })} />
           </Row>
           <Row title="全局快捷键" desc={<><kbd className="hotkey">Ctrl+Alt+1~9</kbd> 切到第 N 个账号，应用在后台也生效</>}>

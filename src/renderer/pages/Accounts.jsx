@@ -1,24 +1,41 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Avatar from '../components/Avatar.jsx';
 import {
-  IconSave, IconRefresh, IconUndo, IconTrash, IconEdit, IconSwitch, IconCheck, IconAlert, IconFolder,
+  IconSave, IconRefresh, IconUndo, IconTrash, IconEdit, IconSwitch, IconCheck, IconAlert, IconFolder, IconUsers,
 } from '../components/icons.jsx';
 import { fmtNum, approxNum, fmtToken, fmtDate, fmtExpiry, usedToday } from '../util.js';
 
-export default function Accounts({ state, accounts, busy, run, setConfirm }) {
+export default function Accounts({ state, accounts, busy, run, setConfirm, showToast }) {
   const [naming, setNaming] = useState(null);
   const [nameDraft, setNamingDraft] = useState('');
   const currentId = state?.current?.shortId;
+
+  // 浏览器登录过程的提示（授权 URL 事件由主进程广播）
+  useEffect(() => {
+    window.buddy.on('login:event', (e) => {
+      if (e?.type === 'authorize-url') showToast('浏览器已打开 Z.AI 授权页；若未打开，请访问控制台日志中的链接', 'ok');
+    });
+  }, [showToast]);
 
   const doCapture = () => run(async () => {
     await window.buddy.captureAccount();
   }, '已保存当前登录账号');
 
+  const doAddViaLogin = () => setConfirm({
+    title: '通过浏览器登录添加账号？',
+    body: '将打开 Z.AI 授权页，登录新账号后自动保存为快照并进入登录态。当前登录态若未保存会先自动保存。整个过程约 1–3 分钟。',
+    danger: false,
+    onOk: () => run(async () => {
+      const r = await window.buddy.addAccountViaLogin();
+      return r;
+    }, '登录成功，新账号已加入列表'),
+  });
+
   const doUse = (account) => setConfirm({
     title: `切换到「${account.name}」？`,
-    body: '将自动关闭 ZCode → 替换登录态 → 重新启动 ZCode。当前登录态会先备份，可一键回滚。',
+    body: '默认热切换：只重启 ZCode 的会话进程，主窗口保持打开，会话将在下次使用时以新账号拉起（可在设置关闭，改走完整重启）。',
     danger: false,
-    onOk: () => run(async () => { await window.buddy.useAccount(account.id); }, '切换完成，ZCode 已重启'),
+    onOk: () => run(async () => { await window.buddy.useAccount(account.id); }, '切换完成'),
   });
 
   const doDelete = (account) => setConfirm({
@@ -48,7 +65,10 @@ export default function Accounts({ state, accounts, busy, run, setConfirm }) {
           <p className="page-sub">保存 / 切换 / 删除账号快照，快照含登录凭证请勿外传</p>
         </div>
         <div className="head-actions">
-          <button className="btn primary" onClick={doCapture} disabled={busy}>
+          <button className="btn primary" onClick={doAddViaLogin} disabled={busy} title="打开浏览器登录一个新账号，自动保存为快照">
+            <IconUsers size={15} /> 浏览器登录添加
+          </button>
+          <button className="btn" onClick={doCapture} disabled={busy}>
             <IconSave size={15} /> 保存当前账号
           </button>
           <button className="btn" onClick={() => run(async () => { await window.buddy.refreshQuota('all'); }, '额度已刷新')} disabled={busy}>

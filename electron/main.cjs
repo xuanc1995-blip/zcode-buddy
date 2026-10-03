@@ -11,6 +11,7 @@ const store = require('../core/store');
 const switcher = require('../core/switcher');
 const quota = require('../core/quota');
 const exporter = require('../core/exporter');
+const autologin = require('../core/autologin');
 const updater = require('./updater.cjs');
 const { findZCodeExe } = require('../core/paths');
 
@@ -27,7 +28,7 @@ if (!app.isPackaged) {
 // ---------------------------------------------------------------------------
 // 设置（userData/settings.json）
 // ---------------------------------------------------------------------------
-const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'system', autoSwitch: false, globalHotkeys: false, transparency: 0, hotSwitch: false, autoCheckUpdates: true };
+const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'system', autoSwitch: false, globalHotkeys: false, transparency: 0, hotSwitch: true, autoCheckUpdates: true };
 
 function settingsFile() {
   return path.join(app.getPath('userData'), 'settings.json');
@@ -150,7 +151,7 @@ async function switchToId(id) {
         store.touch(id);
         logActivity('hotswitch', hot.respawned
           ? `热切换到「${account.name}」（agent 已重启，共 ${hot.killed.length} 个会话）`
-          : `热切换到「${account.name}」（未检测到 agent 自动重启；若会话仍用旧账号，请执行一次完整切换）`);
+          : `热切换到「${account.name}」（登录态已替换；agent 将在下次使用时自动以新账号拉起）`);
         broadcast('state:changed');
         return hot;
       }
@@ -214,6 +215,27 @@ function registerIpc() {
     logActivity('delete', `删除快照「${(store.readAccount(id) || {}).name || id}」`);
     applyGlobalHotkeys(loadSettings().globalHotkeys);
     return r;
+  });
+
+  // 浏览器登录添加账号：复用 ZCode 官方 CLI 的 login --json（浏览器授权 → CLI 写登录态 → 这里照常存快照）
+  ipcMain.handle('account:addViaLogin', async () => {
+    const zcodeExe = findZCodeExe();
+    // login 会覆盖 ~/.zcode/v2 登录态文件：当前账号若还没快照，先自动保存一份
+    const curFp = fingerprint.extractCurrent();
+    if (curFp && !store.findAccount(curFp.shortId)) {
+      const { account } = store.captureCurrent({ name: curFp.label || undefined });
+      logActivity('capture', `添加账号前自动保存当前登录态「${account.name}」`);
+    }
+    const result = await autologin.loginViaCli({
+      zcodeExe,
+      onEvent: (e) => broadcast('login:event', e),
+    });
+    const { account, updated } = store.captureCurrent({});
+    logActivity('login-add', `${updated ? '更新' : '添加'}账号「${account.name}」（浏览器登录，${result.user.email || result.user.user_id}）`);
+    applyGlobalHotkeys(loadSettings().globalHotkeys);
+    broadcast('state:changed');
+    broadcast('quota:updated');
+    return { account, updated, user: result.user };
   });
 
   ipcMain.handle('quota:refresh', async (_e, target) => {

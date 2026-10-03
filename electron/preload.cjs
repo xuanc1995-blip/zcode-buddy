@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('buddy', {
   getState: () => ipcRenderer.invoke('state:get'),
   listAccounts: () => ipcRenderer.invoke('accounts:list'),
   captureAccount: (name) => ipcRenderer.invoke('account:capture', name),
+  addAccountViaLogin: () => ipcRenderer.invoke('account:addViaLogin'),
   useAccount: (id) => ipcRenderer.invoke('account:use', id),
   renameAccount: (id, name) => ipcRenderer.invoke('account:rename', { id, name }),
   deleteAccount: (id) => ipcRenderer.invoke('account:delete', id),
@@ -31,7 +32,7 @@ contextBridge.exposeInMainWorld('buddy', {
   winMaximize: () => ipcRenderer.send('win:maximize'),
   winClose: () => ipcRenderer.send('win:close'),
   on: (channel, cb) => {
-    const ok = ['quota:updated', 'state:changed', 'theme:changed', 'win:maximized', 'activity:updated', 'updater:event'];
+    const ok = ['quota:updated', 'state:changed', 'theme:changed', 'win:maximized', 'activity:updated', 'updater:event', 'login:event'];
     if (ok.includes(channel)) ipcRenderer.on(channel, (_e, payload) => cb(payload));
   },
 });

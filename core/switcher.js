@@ -140,12 +140,14 @@ function restoreLast() {
 }
 
 // ---------------------------------------------------------------------------
-// 热切换（实验性）：不关闭 ZCode 主窗口，只重启 agent 子进程
+// 热切换：不关闭 ZCode 主窗口，只重启 agent 子进程
 //
-// ZCode 的 agent 子进程（执行 `zcode.cjs app-server --stdio`）在启动时读取登录态；
-// 杀掉后其父进程（NodeService）通常会自动重新拉起，新 agent 即使用新账号。
-// 父进程是否必然拉起无法保证（未逆向确认），因此轮询检测，未重启时如实报告，
-// 由调用方决定是否回退完整切换。默认关闭，设置里手动开启。
+// ZCode 的 agent 子进程（执行 `zcode.cjs app-server --stdio`）在启动时读取登录态。
+// 逆向客户端代码确认（out/host/chunk-MZDDONWW.js 的 AgentProcessManager.getClient）：
+// agent 进程按 workspace 按需管理——进程死亡后下一次 getClient 会重新 spawn 并载入
+// 新登录态，另有空闲回收（scheduleIdleReclaim），进程本就是可随时替换的一次性资源。
+// 因此杀掉 agent 后即使父进程不立即拉起，会话也会在下次使用时自动以新账号恢复。
+// 默认开启（v0.6.2 起），可在设置关闭回退完整切换。
 // ---------------------------------------------------------------------------
 
 /** agent 子进程的命令行特征（resources/glm/zcode.cjs app-server --stdio） */
