@@ -44,7 +44,7 @@ electron/
   main.cjs            # 主进程：窗口/托盘/IPC/轮询提醒/自绘窗口键/全局快捷键
   updater.cjs         # 自动更新（electron-updater + GitHub Releases，安装版专用）
   preload.cjs         # contextBridge API
-src/renderer/         # React UI（App + pages/{Dashboard,Accounts,Usage,Activity,Settings,About}）
+src/renderer/         # React UI（App + pages/{Dashboard,Accounts,Usage,Settings,About}；侧栏 5 项）
 scripts/              # gen-icon.js（纯 Node 图标光栅化）、add-shortcut.ps1、release.mjs（发版一条龙）
 tests/core/           # 单元测试（node:test，npm test）——不发网络请求、不碰真实登录态
 build/icon.png        # 应用图标（1024，electron-builder 自动生成 ico）
@@ -103,7 +103,8 @@ node scripts/add-shortcut.ps1   # 重建桌面快捷方式
 
 ## 六、已知问题与限制
 
-- **热切换后 ZCode 界面左下角用户名不刷新**：客户端把登录身份缓存在主进程内存，且对 credentials.json 无文件监听（逆向确认 main 分包无 watch），只有它自己的登录/登出或整窗重启才会刷新。热切换的会话与额度是即时切换的（agent 层面已生效），仅该显示滞后；Buddy 无法安全地从外部刷新它，已在切换确认弹窗与操作记录里注明
+- **热切换后 ZCode 界面左下角用户名不刷新**：客户端把登录身份缓存在主进程内存，且对 credentials.json 无文件监听（逆向确认 main 分包无 watch），只有它自己的登录/登出或整窗重启才会刷新。热切换的会话与额度是即时切换的（agent 层面已生效），仅该显示滞后；Buddy 无法安全地从外部刷新它，已在切换确认弹窗里注明
+- **操作记录页已移除（v0.6.11）**：登录相关事件在账号管理页「登录历史」面板展示（读 activity.jsonl）；底层记录仍保留（最近 500 条自动截断，activity:clear 接口已随页面一并移除）
 - 「昨日消耗」需要历史覆盖昨日（历史约 48 小时 + 应用需在运行轮询），刚装前两天数据不全属正常
 - one_time 额度若当日中途续期，续期前的消耗计入当日（used 随续期清零后只统计续期后的）——与用户观察口径一致
 - 快照含明文凭证且与机器绑定（enc:v1），跨机器需走「导出/导入备份」
