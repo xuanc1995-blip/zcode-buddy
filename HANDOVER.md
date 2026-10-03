@@ -1,6 +1,6 @@
 # ZCode Buddy 交接文档
 
-> 最后更新：2026-10-03 · 当前版本 v0.5.16（本地）· 维护者接手前请完整阅读本文档
+> 最后更新：2026-10-03 · 当前版本 v0.5.16（已发布）· 维护者接手前请完整阅读本文档
 
 ---
 
@@ -19,13 +19,13 @@
 
 | 事项 | 状态 |
 |---|---|
-| 本地 git | master 领先 origin/main **18 个提交**（实验批，**未推 GitHub**——等待验收后一次性推送） |
+| git 同步 | master 已推送 origin/main（2026-10-03），v0.5.0~v0.5.16 **逐版本打 tag**（v0.5.12 含 2 个提交、v0.5.16 含 2 个提交，其余一提交一版本） |
 | GitHub 仓库 | https://github.com/xuanc1995-blip/zcode-buddy （公开、MIT、描述/topics 已配置） |
-| 远端最新 Release | **v0.4.1**（本地 v0.5.0~v0.5.16 均未发布） |
-| 发布流程 | 打 tag（如 `v0.5.16`）→ GitHub Actions 自动构建 NSIS+portable 并挂到 Release（`.github/workflows/release.yml`） |
+| Release | **v0.5.0~v0.5.16 已逐版本发布**：tag 推送触发 CI 构建 NSIS+portable 并挂到 Release（`generate_release_notes` 自动生成说明）；v0.4.1 及更早为手工发布 |
+| 发布流程 | 打 tag（如 `v0.5.17`）→ GitHub Actions 自动构建 NSIS+portable 并挂到 Release（`.github/workflows/release.yml`）；发版前记得补 CHANGELOG.md |
 | gh CLI 账号 | 双账号：**xuanc1995-blip（active，发布用）**、daxieba（inactive）。设备流程登录（client_id `178c6fc778ccc68e1d6a`）。推送如遇 403，确认活动账号：`gh api user --jq .login` |
 
-**推送前检查清单**：① 用户验收实验批功能；② `git push origin master:main`；③ `git tag v0.5.16 && git push --tags` 触发 CI 或本地挂 Release；④ Release 附件（Setup/portable/source zip）；⑤ 可选：把仓库关联到用户的 Projects 看板 `users/xuanc1995-blip/projects/1`（需 token 有 `read:project` scope，当前没有）。
+**下次发版流程**：① 补 `CHANGELOG.md`；② `npm run build:renderer` + 本地验收；③ 提交推送 `git push origin master:main`；④ `git tag vX.Y.Z && git push --tags` 触发 CI；⑤ 可选：把仓库关联到用户的 Projects 看板 `users/xuanc1995-blip/projects/1`（需 token 有 `read:project` scope，当前没有）。
 
 ## 三、架构与目录
 
