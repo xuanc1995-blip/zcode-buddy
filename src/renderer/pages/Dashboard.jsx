@@ -4,12 +4,12 @@ import Avatar from '../components/Avatar.jsx';
 import { IconZap, IconSwitch, IconAlert, IconClock, IconRefresh, IconLayers, IconFlame, IconCalendar } from '../components/icons.jsx';
 import { fmtNum, fmtToken, approxNum, fmtDate, fmtExpiry, usedToday, useCountUp } from '../util.js';
 
-function Stat({ value, label, warn, token }) {
+function Stat({ value, label, warn, token, style }) {
   const animated = useCountUp(value);
   const v = animated == null ? null : Math.round(animated);
   const ap = token && v != null ? approxNum(v) : null;
   return (
-    <div className={`stat ${warn ? 'warn' : ''}`}>
+    <div className={`stat ${warn ? 'warn' : ''}`} style={style}>
       <span className="stat-label">{label}</span>
       <span className="stat-num">{token ? (v == null ? '—' : fmtNum(v)) : animated == null ? '—' : String(animated)}</span>
       {ap && <span className="stat-approx">{ap}</span>}
@@ -24,7 +24,12 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
 
   const withData = accounts.filter((a) => a.quota && a.quota.percentUsed != null);
   const totalRemaining = withData.reduce((s, a) => s + (a.quota.remaining || 0), 0);
-  const totalUsed = withData.reduce((s, a) => s + (a.quota.used || 0), 0);
+  // 今日已用（全部账号）：服务器对每日续期额度的 used 每天清零，所以这是「今日」口径而非历史累计
+  const todayUsedAll = withData.reduce((s, a) => s + (a.todayUsed ?? usedToday(a.history) ?? a.quota?.used ?? 0), 0);
+  // 历史累计：本地按日记录（daily.json）求和，自 v0.6.4 起记录
+  const [dailyAgg, setDailyAgg] = useState(null);
+  useEffect(() => { window.buddy.statsDaily?.().then(setDailyAgg).catch(() => {}); }, []);
+  const localCumulative = dailyAgg ? dailyAgg.days.reduce((s, d) => s + (d.total || 0), 0) : null;
   const threshold = settings?.lowQuotaThreshold ?? 10;
   const lowAccounts = withData.filter((a) => 100 - a.quota.percentUsed < threshold);
   const expiredAccounts = accounts.filter((a) => a.tokenStatus === 'expired');
@@ -50,9 +55,11 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
 
   const doUse = (account) => setConfirm({
     title: `切换到「${account.name}」？`,
-    body: '将自动关闭 ZCode → 替换登录态 → 重新启动 ZCode。当前登录态会先备份，可一键回滚。',
+    body: settings?.hotSwitch !== false
+      ? '热切换：只重启 ZCode 的会话进程，主窗口保持打开，新消息立即由新账号驱动（界面用户名待下次完整重启 ZCode 后刷新）。'
+      : '将关闭并重启 ZCode，替换登录态。当前登录态会先备份，可一键回滚。',
     danger: false,
-    onOk: () => run(async () => { await window.buddy.useAccount(account.id); }, '切换完成，ZCode 已重启'),
+    onOk: () => run(async () => { await window.buddy.useAccount(account.id); }, '切换完成'),
   });
 
   return (
@@ -161,8 +168,11 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
       <section className="stats">
         <Stat value={accounts.length} label="账号总数" formatter={(v) => String(v)} />
         <Stat value={totalRemaining} label="全部剩余额度" token />
-        <Stat value={totalUsed} label="累计已用" token />
+        <Stat value={todayUsedAll} label="今日已用（全部账号）" token />
         <Stat value={lowAccounts.length} label={`低额度账号（<${threshold}%）`} warn={lowAccounts.length > 0} formatter={(v) => String(v)} />
+        {localCumulative != null && localCumulative > 0 && (
+          <Stat value={localCumulative} label="累计已用（本地按日记录）" token style={{ gridColumn: 'span 2' }} />
+        )}
       </section>
 
       {/* 告警与快捷切换：只有当前账号额度不足才是主告警，其他账号仅作参考 */}
@@ -173,7 +183,7 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
             {currentLow
               ? <div>当前账号「{current.name}」额度不足（剩余 {remainingPct.toFixed(1)}%），建议切换到额度充足的账号</div>
               : lowAccounts.length > 0 && <div className="dim">其他低额度账号：{lowAccounts.map((a) => a.name).join('、')}（剩余低于 {threshold}%，仅供参考）</div>}
-            {expiredAccounts.length > 0 && <div className="dim">Token 已过期：{expiredAccounts.map((a) => a.name).join('、')}，请在 ZCode 重新登录后再「保存当前账号」</div>}
+            {expiredAccounts.length > 0 && <div className="dim">Token 已过期：{expiredAccounts.map((a) => a.name).join('、')}——在 ZCode 或本工具里重新登录该账号后会自动更新快照</div>}
           </div>
         </section>
       )}
