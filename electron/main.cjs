@@ -13,7 +13,7 @@ const quota = require('../core/quota');
 const exporter = require('../core/exporter');
 const autologin = require('../core/autologin');
 const updater = require('./updater.cjs');
-const { findZCodeExe } = require('../core/paths');
+const { findZCodeExe, CREDENTIALS_FILE, CONFIG_FILE } = require('../core/paths');
 
 let mainWindow = null;
 let tray = null;
@@ -48,6 +48,28 @@ function saveLoginState(patch) {
   const next = { ...loadLoginState(), ...patch, updatedAt: Date.now() };
   try { fs.writeFileSync(loginStateFile(), JSON.stringify(next, null, 2), 'utf8'); } catch (_) {}
   return next;
+}
+
+/**
+ * 快照凭证保活：当前登录账号的 token 被客户端轮换后（credentials.json 变化），
+ * 把最新凭证同步回它的快照，避免下次切回时用过期凭证（表现为账号卡片显示「过期」）。
+ * 每轮轮询调用一次，只比对当前账号；新账号的出现由 checkLoginStateChange 处理。
+ */
+function syncCurrentAccountSnapshot() {
+  const fp = fingerprint.extractCurrent();
+  if (!fp || loginInFlight) return;
+  const existing = store.findAccount(fp.shortId);
+  if (!existing) return;
+  try {
+    let liveCredentials = null;
+    let liveConfig = null;
+    try { liveCredentials = fs.readFileSync(CREDENTIALS_FILE, 'utf8'); } catch (_) {}
+    try { liveConfig = fs.readFileSync(CONFIG_FILE, 'utf8'); } catch (_) {}
+    if (liveCredentials === null) return;
+    if (liveCredentials === existing.credentials && (liveConfig ?? '') === (existing.config ?? '')) return;
+    store.captureCurrent({ source: 'auto' });
+    logActivity('capture', `已同步「${existing.name}」的最新凭证到快照`);
+  } catch (_) { /* 文件读取失败等，下轮再试 */ }
 }
 
 /**
@@ -117,7 +139,8 @@ function saveSettings(patch) {
 // ---------------------------------------------------------------------------
 async function pollQuotaOnce({ notify = true } = {}) {
   const settings = loadSettings();
-  // 先检测登录态变化（手动在 ZCode 里登录的新账号会在此自动入库并参与本轮查询）
+  // 先同步当前账号快照凭证、检测登录态变化（手动在 ZCode 里登录的新账号会在此自动入库并参与本轮查询）
+  syncCurrentAccountSnapshot();
   checkLoginStateChange();
   const accounts = store.listAccounts({ withPayload: true });
   const results = [];
@@ -409,16 +432,18 @@ function registerIpc() {
   // 每日消耗聚合（daily.json）：昨日/近 7 天不再依赖 48 小时历史点
   ipcMain.handle('stats:daily', () => ({ days: store.readDailySummary({ days: 60 }) }));
 
-  // 导出每日消耗 CSV（date,total,各账号列）
+  // 导出每日消耗 CSV（date,total,各账号列,各模型列）。账号值兼容 v1（数字）与 v2（{total,models}）
   ipcMain.handle('stats:daily:export', async () => {
     const days = store.readDailySummary({ days: 120 });
     if (days.length === 0) return { canceled: true, empty: true };
     const nameById = new Map(store.listAccounts().map((a) => [a.id, a.name]));
     const ids = [...new Set(days.flatMap((d) => Object.keys(d.accounts)))];
+    const modelNames = [...new Set(days.flatMap((d) => Object.keys(d.models || {})))];
     const esc = (s) => `"${String(s).replace(/"/g, '""')}"`;
-    const header = ['date', 'total', ...ids.map((id) => esc(nameById.get(id) || id))].join(',');
+    const accountTotal = (v) => (v == null ? '' : typeof v === 'object' ? (v.total ?? '') : v);
+    const header = ['date', 'total', ...ids.map((id) => esc(nameById.get(id) || id)), ...modelNames.map((m) => esc(m))].join(',');
     const rows = days.map((d) =>
-      [d.date, d.total ?? '', ...ids.map((id) => d.accounts[id] ?? '')].join(','),
+      [d.date, d.total ?? '', ...ids.map((id) => accountTotal(d.accounts[id])), ...modelNames.map((m) => d.models?.[m] ?? '')].join(','),
     );
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
       title: '导出每日消耗（CSV）',
@@ -624,7 +649,10 @@ function createTray() {
       { label: '退出', click: () => { quitting = true; app.quit(); } },
     ]);
     tray.setContextMenu(menu);
-    tray.setToolTip('ZCode Buddy — 账号快捷切换');
+    // 悬停提示带当前账号与剩余额度（rebuild 每 30 秒跑一次，顺带刷新）
+    const curAcc = current ? store.readAccount(current.shortId) : null;
+    const curPct = curAcc?.quota?.percentUsed != null ? Math.max(0, Math.round(100 - curAcc.quota.percentUsed)) : null;
+    tray.setToolTip(`ZCode Buddy${curAcc ? ` — 当前「${curAcc.name}」` : ''}${curPct != null ? ` · 剩 ${curPct}%` : ''}`);
     tray.on('click', showMainWindow);
   };
   rebuild();
@@ -665,8 +693,9 @@ if (!gotLock) {
     createTray();
     if (loadSettings().autoStartPolling) startPolling();
     applyGlobalHotkeys(loadSettings().globalHotkeys);
-    // 启动即登记当前登录态（首次运行会把现有登录账号自动入库）
+    // 启动即登记当前登录态（首次运行会把现有登录账号自动入库）并同步快照凭证
     checkLoginStateChange();
+    syncCurrentAccountSnapshot();
     // 「自动安装更新」开关：自动下载 + 退出应用时自动安装
     updater.setAutoInstall(loadSettings().autoInstallUpdates === true);
     // 启动后 15 秒静默检查一次更新，之后每 12 小时一次（设置里可关）

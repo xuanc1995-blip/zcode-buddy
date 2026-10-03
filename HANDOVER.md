@@ -63,6 +63,7 @@ accounts/             # 账号快照（含明文凭证！已 gitignore，严禁�
 - **完整切换 = 关闭 ZCode → 备份当前到 `.last/` → 原子替换（.tmp+rename）→ 重启 ZCode**。运行中直接改文件会被客户端退出时回写覆盖
 - **热切换（v0.6.2 起默认开启）**：agent 子进程 = 命令行含 `zcode.cjs app-server` 的 ZCode.exe。流程 = 杀全部 agent（taskkill /T）→ 立即原子替换 → 轮询检测。**已逆向确认可行性**（out/host/chunk-MZDDONWW.js 的 AgentProcessManager）：agent 按 workspace 按需管理，死亡后下一次 `getClient` 重新 spawn 并载入新登录态，另有空闲回收——即使未检测到立即重启，会话也会在下次使用时自动恢复。失败仍自动回退完整切换
 - **浏览器登录添加账号**：复用官方 CLI `zcode.cjs login --json`（spawn 方式同 app-server：ZCode.exe + `ELECTRON_RUN_AS_NODE=1`）。CLI 自己完成浏览器授权（/oauth/cli/{init,poll}）并写同一份 `~/.zcode/v2` 登录态，stdout 输出 `{status:"ready", user, credentialsPath, configPath}`；Buddy 随后照常 captureCurrent。实现见 `core/autologin.js`
+- **快照凭证保活**：pollQuotaOnce 每轮调用 syncCurrentAccountSnapshot()，当前账号的活体凭证与快照不一致（客户端轮换 token）时自动 captureCurrent 同步，减少「过期」。
 - **历史登录态自动捕捉**：`login-state.json`（userData）记录 lastShortId；启动与每轮轮询时 `checkLoginStateChange()` 对比当前指纹，变化则记录事件并自动 captureCurrent（source:'auto'，可关）。快照字段 source 区分来源（manual/auto/login）。注意：检测依赖 Buddy 运行，Buddy 未运行期间发生的登录变化在其下次启动时补捉
 - `credentials.json` 中敏感字段是 `enc:v1` 加密：aes-256-gcm，key = sha256(`zcode-credential-fallback:<platform>:<homedir>:<username>`)。解密仅用于指纹与额度查询；快照因此**仅限本机使用**
 
