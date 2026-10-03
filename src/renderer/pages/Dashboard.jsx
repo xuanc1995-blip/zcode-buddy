@@ -10,9 +10,9 @@ function Stat({ value, label, warn, token }) {
   const ap = token && v != null ? approxNum(v) : null;
   return (
     <div className={`stat ${warn ? 'warn' : ''}`}>
+      <span className="stat-label">{label}</span>
       <span className="stat-num">{token ? (v == null ? '—' : fmtNum(v)) : animated == null ? '—' : String(animated)}</span>
       {ap && <span className="stat-approx">{ap}</span>}
-      <span className="stat-label">{label}</span>
     </div>
   );
 }
