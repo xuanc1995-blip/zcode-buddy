@@ -113,8 +113,8 @@ export default function Accounts({ state, accounts, busy, run, setConfirm, showT
       {accounts.length === 0 ? (
         <div className="empty">
           <IconSave size={34} />
-          <p>还没有保存任何账号</p>
-          <p className="dim">先在 ZCode 里登录一个账号，然后点上方「保存当前账号」；<br />换下一个账号后重复一次，就能一键切换了</p>
+          <p>还没有任何账号</p>
+          <p className="dim">登录过的账号会自动出现在这里（自动保存历史登录态开启时），<br />也可点上方按钮手动保存；存好两个以上账号就能一键切换了</p>
         </div>
       ) : (
         <div className="card-grid">
@@ -151,6 +151,7 @@ export default function Accounts({ state, accounts, busy, run, setConfirm, showT
                   <div className="badges">
                     {a.tokenStatus === 'expired' && <span className="badge warn"><IconAlert size={11} /> 过期</span>}
                     {a.tokenStatus === 'valid' && <span className="badge ok"><IconCheck size={11} /> 正常</span>}
+                    {a.source === 'auto' && <span className="badge" title="登录态变化时自动捕捉的历史登录状态">自动</span>}
                     {isCurrent && <span className="badge">当前</span>}
                   </div>
                 </div>

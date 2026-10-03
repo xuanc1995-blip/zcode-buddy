@@ -90,6 +90,9 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
           <Row title="自动切换" desc="当前账号剩余低于阈值时，自动切到剩余最多的账号（会重启 ZCode 并通知）">
             <Toggle checked={draft.autoSwitch} onChange={(v) => save({ autoSwitch: v })} />
           </Row>
+          <Row title="自动保存历史登录态" desc="检测到登录态变化（如你在 ZCode 里手动登录了新账号）时自动存为快照，任何登录过的状态都可一键恢复；随启动与额度轮询检测">
+            <Toggle checked={draft.autoCaptureLoginState !== false} onChange={(v) => save({ autoCaptureLoginState: v })} />
+          </Row>
           <Row title="热切换" desc="切换时只重启 ZCode 的会话进程（agent）、不关主窗口；会话在下次使用时自动以新账号拉起，失败自动回退完整重启。关闭后始终走完整重启切换">
             <Toggle checked={!!draft.hotSwitch} onChange={(v) => save({ hotSwitch: v })} />
           </Row>

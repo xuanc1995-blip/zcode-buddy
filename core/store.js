@@ -95,9 +95,11 @@ function writeAccount(account) {
 /**
  * 抓取当前登录态，保存/更新为一份账号快照。
  * 同一账号（user_id 相同）重复 capture 会更新原有快照，除非显式传 overwrite=false。
+ * @param {{name?:string, overwrite?:boolean, source?:string}} opts
+ *        source: 快照来源（manual=手动保存 / auto=登录态变化自动捕捉 / login=浏览器登录添加），用于列表区分展示
  * @returns {{account, updated:boolean}}
  */
-function captureCurrent({ name, overwrite = true } = {}) {
+function captureCurrent({ name, overwrite = true, source } = {}) {
   let credentialsText;
   let configText;
   try { credentialsText = fs.readFileSync(CREDENTIALS_FILE, 'utf8'); } catch (_) { credentialsText = null; }
@@ -121,6 +123,7 @@ function captureCurrent({ name, overwrite = true } = {}) {
     capturedAt: existing?.capturedAt || Date.now(),
     updatedAt: Date.now(),
     lastUsedAt: existing?.lastUsedAt || null,
+    source: source || existing?.source || 'manual',
     quota: existing?.quota || null,
     quotaRefreshedAt: existing?.quotaRefreshedAt || null,
     credentials: credentialsText,

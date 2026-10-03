@@ -28,10 +28,57 @@ if (!app.isPackaged) {
 // ---------------------------------------------------------------------------
 // 设置（userData/settings.json）
 // ---------------------------------------------------------------------------
-const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'system', autoSwitch: false, globalHotkeys: false, transparency: 0, hotSwitch: true, autoCheckUpdates: true, autoInstallUpdates: false };
+const DEFAULT_SETTINGS = { lowQuotaThreshold: 10, pollIntervalMinutes: 5, autoStartPolling: true, theme: 'system', autoSwitch: false, globalHotkeys: false, transparency: 0, hotSwitch: true, autoCheckUpdates: true, autoInstallUpdates: false, autoCaptureLoginState: true };
 
 // 浏览器登录进行中：登录态文件正被官方 CLI 改写，此时切换/回滚必须拒绝
 let loginInFlight = false;
+
+// ---------------------------------------------------------------------------
+// 登录态历史：检测当前登录态变化并自动存档，保证任何登录过的状态都可回溯恢复
+// ---------------------------------------------------------------------------
+function loginStateFile() {
+  return path.join(app.getPath('userData'), 'login-state.json');
+}
+
+function loadLoginState() {
+  try { return JSON.parse(fs.readFileSync(loginStateFile(), 'utf8')) || {}; } catch (_) { return {}; }
+}
+
+function saveLoginState(patch) {
+  const next = { ...loadLoginState(), ...patch, updatedAt: Date.now() };
+  try { fs.writeFileSync(loginStateFile(), JSON.stringify(next, null, 2), 'utf8'); } catch (_) {}
+  return next;
+}
+
+/**
+ * 对比当前登录态与上次记录：
+ * - 变化且未保存过 → 自动存为新快照（可在设置关闭，仅记录事件）
+ * - 变化 → 记录「登录态切换」事件并刷新 lastSeen
+ * 启动后与每轮轮询各检查一次（手动在 ZCode 里登录的账号由此自动入库）。
+ */
+function checkLoginStateChange() {
+  const fp = fingerprint.extractCurrent();
+  if (!fp || loginInFlight) return null;
+  const seen = loadLoginState();
+  if (seen.lastShortId === fp.shortId) return null;
+
+  const prevName = seen.lastShortId
+    ? ((store.readAccount(seen.lastShortId) || {}).name || seen.lastLabel || seen.lastShortId)
+    : null;
+  let captured = null;
+  if (loadSettings().autoCaptureLoginState !== false && !store.findAccount(fp.shortId)) {
+    try {
+      captured = store.captureCurrent({ name: fp.label || undefined, source: 'auto' }).account;
+      logActivity('capture', `检测到新登录态，自动保存「${captured.name}」`);
+    } catch (_) { /* 凭证读取失败等，不影响记录 */ }
+  }
+  logActivity('state-change', prevName
+    ? `登录态变化：${prevName} → ${fp.label || fp.shortId}`
+    : `记录当前登录态：${fp.label || fp.shortId}`);
+  saveLoginState({ lastShortId: fp.shortId, lastLabel: fp.label });
+  broadcast('state:changed');
+  return { fp, captured, prevName };
+}
 
 function settingsFile() {
   return path.join(app.getPath('userData'), 'settings.json');
@@ -70,6 +117,8 @@ function saveSettings(patch) {
 // ---------------------------------------------------------------------------
 async function pollQuotaOnce({ notify = true } = {}) {
   const settings = loadSettings();
+  // 先检测登录态变化（手动在 ZCode 里登录的新账号会在此自动入库并参与本轮查询）
+  checkLoginStateChange();
   const accounts = store.listAccounts({ withPayload: true });
   const results = [];
   for (const account of accounts) {
@@ -153,6 +202,7 @@ async function switchToId(id) {
       const hot = await switcher.hotSwitchState(targetState);
       if (hot.hot) {
         store.touch(id);
+        saveLoginState({ lastShortId: account.id, lastLabel: account.name });
         logActivity('hotswitch', hot.respawned
           ? `热切换到「${account.name}」（agent 已重启，共 ${hot.killed.length} 个会话）`
           : `热切换到「${account.name}」（登录态已替换；agent 将在下次使用时自动以新账号拉起）`);
@@ -167,6 +217,7 @@ async function switchToId(id) {
 
   const result = await switcher.applyState(targetState, { restart: true });
   store.touch(id);
+  saveLoginState({ lastShortId: account.id, lastLabel: account.name });
   logActivity('switch', `切换到「${account.name}」`);
   broadcast('state:changed');
   return result;
@@ -228,7 +279,7 @@ function registerIpc() {
     // login 会覆盖 ~/.zcode/v2 登录态文件：当前账号若还没快照，先自动保存一份
     const curFp = fingerprint.extractCurrent();
     if (curFp && !store.findAccount(curFp.shortId)) {
-      const { account } = store.captureCurrent({ name: curFp.label || undefined });
+      const { account } = store.captureCurrent({ name: curFp.label || undefined, source: 'auto' });
       logActivity('capture', `添加账号前自动保存当前登录态「${account.name}」`);
     }
     loginInFlight = true;
@@ -237,8 +288,9 @@ function registerIpc() {
         zcodeExe,
         onEvent: (e) => broadcast('login:event', e),
       });
-      const { account, updated } = store.captureCurrent({});
+      const { account, updated } = store.captureCurrent({ source: 'login' });
       logActivity('login-add', `${updated ? '更新' : '添加'}账号「${account.name}」（浏览器登录，${result.user.email || result.user.user_id}）`);
+      saveLoginState({ lastShortId: account.id, lastLabel: account.name });
       applyGlobalHotkeys(loadSettings().globalHotkeys);
       broadcast('state:changed');
       broadcast('quota:updated');
@@ -280,6 +332,7 @@ function registerIpc() {
     if (loginInFlight) throw new Error('浏览器登录进行中，请等登录完成后再回滚');
     const result = await switcher.rollback({ restart: true });
     logActivity('rollback', '回滚到上次切换前的登录态');
+    checkLoginStateChange(); // 回滚后的登录态重新登记（必要时自动存档）
     broadcast('state:changed');
     return result;
   });
@@ -603,6 +656,8 @@ if (!gotLock) {
     createTray();
     if (loadSettings().autoStartPolling) startPolling();
     applyGlobalHotkeys(loadSettings().globalHotkeys);
+    // 启动即登记当前登录态（首次运行会把现有登录账号自动入库）
+    checkLoginStateChange();
     // 「自动安装更新」开关：自动下载 + 退出应用时自动安装
     updater.setAutoInstall(loadSettings().autoInstallUpdates === true);
     // 启动后 15 秒静默检查一次更新，之后每 12 小时一次（设置里可关）
