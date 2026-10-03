@@ -73,19 +73,17 @@ export default function Usage({ state, accounts }) {
                 const pct = a.quota?.percentUsed != null ? 100 - a.quota.percentUsed : null;
                 const isCurrent = a.id === currentId;
                 return (
-                  <div key={a.id} className="setting-row">
-                    <div className="setting-info" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <div key={a.id} className="usage-row">
+                    <div className="usage-who">
                       <Avatar name={a.name} id={a.id} size={32} />
                       <b>{a.name}</b>
                       {isCurrent && <span className="badge">当前</span>}
                       <span className="hint">{a.quota?.plan?.tier || '—'}</span>
                     </div>
-                    <div className="setting-ctl" style={{ flex: 1, maxWidth: 420, justifyContent: 'flex-end' }}>
-                      <span className="rank-col" title="今日消耗">今日 <b>{today != null ? fmtToken(today) : '—'}</b></span>
-                      <span className="rank-col" title="累计已用">累计 <b>{fmtToken(a.quota?.used)}</b></span>
-                      <div className="model-bar" style={{ width: 110, height: 8 }}><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
-                      <em className="ctl-value">{pct != null ? `剩${pct.toFixed(0)}%` : '—'}</em>
-                    </div>
+                    <div className="usage-col"><span className="uc-label">今日</span><b className="uc-val">{today != null ? fmtToken(today) : '—'}</b></div>
+                    <div className="usage-col"><span className="uc-label">累计</span><b className="uc-val">{fmtToken(a.quota?.used)}</b></div>
+                    <div className="model-bar"><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
+                    <em className="usage-pct">{pct != null ? `剩${pct.toFixed(0)}%` : '—'}</em>
                   </div>
                 );
               })}
