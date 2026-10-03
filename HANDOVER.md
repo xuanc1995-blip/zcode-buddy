@@ -34,21 +34,23 @@ core/                 # 零依赖 Node 核心（可独立 CLI）
   paths.js            #   路径常量 + ZCode.exe 定位（含运行中进程反查，适配非标准安装路径）
   crypto.js           #   ZCode enc:v1 字段解密（aes-256-gcm）
   fingerprint.js      #   从登录态提取账号身份（user_id/邮箱）
-  store.js            #   快照存储 + 额度缓存 + 当日消耗计算 + 历史记录（576 点）
-  switcher.js         #   进程检测/备份/原子替换/回滚（切换核心）
+  store.js            #   快照存储 + 额度缓存 + 当日消耗计算 + 历史记录（576 点）+ 每日聚合（daily.json，120 天）
+  switcher.js         #   进程检测/备份/原子替换/回滚（切换核心）+ 热切换（agent 子进程重启）
   quota.js            #   billing 接口客户端 + 客户端身份头复刻
   exporter.js         #   .zbak 加密备份导出/导入
   cli.js              #   命令行入口
 electron/
   main.cjs            # 主进程：窗口/托盘/IPC/轮询提醒/自绘窗口键/全局快捷键
+  updater.cjs         # 自动更新（electron-updater + GitHub Releases，安装版专用）
   preload.cjs         # contextBridge API
 src/renderer/         # React UI（App + pages/{Dashboard,Accounts,Usage,Activity,Settings,About}）
-scripts/              # gen-icon.js（纯 Node 图标光栅化）、add-shortcut.ps1
+scripts/              # gen-icon.js（纯 Node 图标光栅化）、add-shortcut.ps1、release.mjs（发版一条龙）
+tests/core/           # 单元测试（node:test，npm test）——不发网络请求、不碰真实登录态
 build/icon.png        # 应用图标（1024，electron-builder 自动生成 ico）
 dist/                 # vite 构建产物（gitignore）
 release/              # 打包产物（gitignore）：Setup exe + portable exe
 accounts/             # 账号快照（含明文凭证！已 gitignore，严禁外传/入库）
-.github/workflows/release.yml  # tag → 自动打包发布
+.github/workflows/release.yml  # tag → 自动打包发布（含 latest.yml 生成，供 electron-updater 检测更新）
 ```
 
 数据目录：安装版/便携版 `%APPDATA%\zcode-buddy\accounts`（快照）+ 同级 `settings.json`；开发实例隔离在 `%APPDATA%\zcode-buddy\dev`（避免与打包版单实例锁冲突）。
@@ -57,7 +59,8 @@ accounts/             # 账号快照（含明文凭证！已 gitignore，严禁�
 
 ### 1. 登录态与切换机制
 - ZCode 登录态 = `%USERPROFILE%\.zcode\v2\credentials.json` + `config.json` 两份文件
-- **切换 = 关闭 ZCode → 备份当前到 `.last/` → 原子替换（.tmp+rename）→ 重启 ZCode**。运行中直接改文件会被客户端退出时回写覆盖
+- **完整切换 = 关闭 ZCode → 备份当前到 `.last/` → 原子替换（.tmp+rename）→ 重启 ZCode**。运行中直接改文件会被客户端退出时回写覆盖
+- **热切换（实验性，默认关）**：agent 子进程 = 命令行含 `zcode.cjs app-server` 的 ZCode.exe（父进程是 NodeService utility）。流程 = 杀全部 agent（taskkill /T）→ 立即原子替换 → 轮询 8 秒看父进程是否重新拉起 agent。**父进程是否必然重新拉起未经逆向确认**，未拉起时只如实报告不撒谎；失败自动回退完整切换
 - `credentials.json` 中敏感字段是 `enc:v1` 加密：aes-256-gcm，key = sha256(`zcode-credential-fallback:<platform>:<homedir>:<username>`)。解密仅用于指纹与额度查询；快照因此**仅限本机使用**
 
 ### 2. 额度接口（core/quota.js）
@@ -70,7 +73,8 @@ accounts/             # 账号快照（含明文凭证！已 gitignore，严禁�
 ### 3. 今日消耗口径（经过三次迭代的最终方案）
 - **直接求和服务器各活跃额度的 `used_units`**——这些额度每日续期，used 计数随续期清零，服务器的 used 即当日用量，跨零点自动重新起算
 - 已否决的方案及原因：① 历史点差值（应用重启/关闭期的采样缺口会漏计）；② 当日基线差值（基线晚于消耗开始时低估）
-- 历史记录保留 576 点（5 分钟轮询 ≈ 48 小时），用于 sparkline/趋势与昨日消耗（`usedYesterday`，跨零点前需历史覆盖昨日）
+- 历史记录保留 576 点（5 分钟轮询 ≈ 48 小时），用于 sparkline/趋势
+- **每日聚合（v0.6.0 起）**：saveQuota 时把当日 used 求和落盘 `daily.json`（数据目录根，与 accounts/ 同级，保留 120 天）；「昨日消耗」「近 7 天」读这里，不再依赖应用连续在线。某天有记录 = 当天至少轮询过一次（应用全天没跑则该天无数据，这是采样口径的天限）
 
 ### 4. 其他
 - ZCode.exe 可能装在非标准路径：`findZCodeExe()` 有运行中进程反查兜底（PowerShell Get-Process）
@@ -84,7 +88,9 @@ accounts/             # 账号快照（含明文凭证！已 gitignore，严禁�
 npm install            # 安装（本机 npm 会拦 install scripts：需 npm approve-scripts electron esbuild）
 npm run dev:electron   # 开发运行（渲染层改动后先 npm run build:renderer，或另开 dev:vite）
 npm run build          # 构建安装版+便携版到 release/（先关正在运行的 ZCode Buddy.exe）
+npm test               # core 单元测试（node:test，不碰真实登录态）
 npm run icon           # 重新生成应用图标
+npm run release 0.7.0  # 发版一条龙：版本号→提交→tag→推送→盯 CI（先手写 CHANGELOG）
 node core/cli.js status|list|capture|use|quota|rollback   # CLI
 node scripts/add-shortcut.ps1   # 重建桌面快捷方式
 ```
@@ -101,10 +107,12 @@ node scripts/add-shortcut.ps1   # 重建桌面快捷方式
 
 ## 七、Roadmap（未实现）
 
+- ~~热切换~~（v0.6.0 已实现实验版，默认关闭；父进程自动重启 agent 的行为待长期观察确认后可转为默认开）
+- ~~自动更新~~（v0.6.0 已实现 electron-updater；后续可做：全量静默更新设置项、便携版引导下载直链）
 - 浏览器 OAuth 直接添加新账号（免手动切换登录）
-- 热切换（不关闭 ZCode 主窗口，仅重启 agent 子进程）
 - 跨账号会话迁移
 - macOS / Linux 支持
+- 界面 i18n（当前全中文硬编码）
 
 ## 八、发布操作手册（下次发版照做）
 
