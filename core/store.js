@@ -140,42 +140,14 @@ function saveQuota(id, quota, { tokenStatus } = {}) {
     account.history = history.slice(-576);
   }
 
-  // 当日消耗（按额度周期精确统计）：
-  //   daily 周期：服务器 used_units 随每日续期清零，其值即当日用量
-  //   其他周期（如 trust 每日续期换新 entitlementId）：id 变化 = 续期重置 → used 即当日用量；
-  //   id 未变：当日首采点建立基线，之后 = used − 基线（当日内重置则基线归零重算）
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
-  const baseline = account.usedBaseline || {};
-  let todayUsed = null;
+  // 当日消耗：各活跃额度的 used_units 之和。
+  // 这些额度每日续期，used 计数随续期清零，服务器报的 used 即当日用量（跨零点自动重新起算）。
   if (quota && Array.isArray(quota.items)) {
-    const nextBaseline = {};
+    let todayUsed = null;
     for (const it of quota.items) {
-      if (it.used == null || !it.entitlementId) continue;
-      const b = baseline[it.entitlementId];
-      let usedTodayI;
-      if (it.period === 'daily') {
-        // 服务器日计数即当日用量
-        usedTodayI = Math.max(0, it.used);
-      } else if (!b || !b.entId) {
-        // 首次见到该额度：按当日用量计（此类额度每日续期重置）
-        usedTodayI = Math.max(0, it.used);
-      } else if (b.date !== todayStr && b.entId !== it.entitlementId) {
-        // 跨日且已续期（id 变化）→ 重置
-        usedTodayI = Math.max(0, it.used);
-      } else if (b.date !== todayStr) {
-        // 跨日未续期：今天至今的下降 + 无法追溯的部分，取保守差值
-        usedTodayI = Math.max(0, it.used - b.used);
-      } else if (it.used < b.used) {
-        // 当日内重置（续期/充值）
-        usedTodayI = Math.max(0, it.used);
-      } else {
-        usedTodayI = Math.max(0, it.used - b.used);
-      }
-      nextBaseline[it.entitlementId] = { date: todayStr, used: it.used, entId: it.entitlementId };
-      todayUsed = (todayUsed ?? 0) + usedTodayI;
+      if (it.used == null) continue;
+      todayUsed = (todayUsed ?? 0) + Math.max(0, it.used);
     }
-    account.usedBaseline = nextBaseline;
     account.todayUsed = todayUsed;
     account.todayUsedAt = Date.now();
   }
