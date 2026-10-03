@@ -120,7 +120,8 @@ export default function Dashboard({ state, accounts, settings, busy, run, setCon
                       >
                         <span className="model-name">{it.name}</span>
                         <div className="model-bar"><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
-                        <span className="model-num">{pct != null ? `${pct.toFixed(0)}%` : '—'} · {fmtNum(it.remaining)}</span>
+                        <em className="model-pct">{pct != null ? `${pct.toFixed(0)}%` : '—'}</em>
+                        <em className="model-rem">{fmtNum(it.remaining)}</em>
                       </button>
                     );
                   })}

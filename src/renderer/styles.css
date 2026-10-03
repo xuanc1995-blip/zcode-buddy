@@ -200,7 +200,12 @@ body::before {
 .hero-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
 .hrow { display: flex; align-items: center; gap: 8px; color: var(--text-dim); font-size: 13px; }
 .hrow svg { color: var(--accent); flex-shrink: 0; }
-.hero-models { margin-top: 6px; display: flex; flex-direction: column; gap: 7px; max-width: 460px; }
+.hero-models { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; max-width: 470px; }
+.hero-models .model-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; width: 100%; box-sizing: border-box; }
+.hero-models .model-name { flex: 0 0 122px; }
+.hero-models .model-bar { flex: 1 1 auto; min-width: 60px; height: 8px; background: rgba(108, 123, 255, 0.16); }
+.hero-models .model-pct { flex: 0 0 42px; text-align: right; font-style: normal; font-weight: 700; font-size: 12.5px; color: var(--text); }
+.hero-models .model-rem { flex: 0 0 92px; text-align: right; font-style: normal; font-size: 11.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .card-models { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
 .card-models .model-row { grid-template-columns: 112px 1fr auto; }
 .model-row {
