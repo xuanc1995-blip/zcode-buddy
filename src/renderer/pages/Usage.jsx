@@ -183,33 +183,31 @@ export default function Usage({ state, accounts, settings, showToast }) {
                     ));
                   })()}
                 </div>
-                <div className="dtrend-grid dtrend-head">
-                  <span>日期</span>
-                  <span className="dtrend-side"><span>较前一日</span><span>消耗</span></span>
+                <div className="dtrend-grid">
+                  {[...trend].reverse().map((d) => {
+                    const t = new Date(`${d.date}T00:00:00`);
+                    t.setDate(t.getDate() - 1);
+                    const p2 = (n) => String(n).padStart(2, '0');
+                    const prevKey = `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())}`;
+                    const prevDay = dailyMap[prevKey];
+                    const prevVal = prevDay ? (trendModel === '__total__' ? prevDay.total : (prevDay.models?.[trendModel] ?? 0)) : null;
+                    const v = trendValue(d);
+                    const delta = prevVal != null && prevVal > 0 && v != null ? ((v - prevVal) / prevVal) * 100 : null;
+                    const isPeak = trendValue(d) > 0 && trend.reduce((m, x) => (trendValue(x) > trendValue(m) ? x : m), trend[0]).date === d.date;
+                    return (
+                      <div key={d.date} className="dtrend-card">
+                        <span className="dtrend-who">
+                          {d.date.slice(5).replace('-', '/')}{d.date === dayKey(0) ? '（今天）' : ''}
+                          {isPeak && <span className="badge peak">峰值</span>}
+                        </span>
+                        <span className="dtrend-side">
+                          <span className={`dtrend-delta ${delta == null ? '' : delta >= 0 ? 'up' : 'down'}`}>{delta == null ? '—' : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(1)}%`}</span>
+                          <b className="dtrend-val">{fmtNum(v)}</b>
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-                {[...trend].reverse().map((d) => {
-                  const t = new Date(`${d.date}T00:00:00`);
-                  t.setDate(t.getDate() - 1);
-                  const p2 = (n) => String(n).padStart(2, '0');
-                  const prevKey = `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())}`;
-                  const prevDay = dailyMap[prevKey];
-                  const prevVal = prevDay ? (trendModel === '__total__' ? prevDay.total : (prevDay.models?.[trendModel] ?? 0)) : null;
-                  const v = trendValue(d);
-                  const delta = prevVal != null && prevVal > 0 && v != null ? ((v - prevVal) / prevVal) * 100 : null;
-                  const isPeak = trendValue(d) > 0 && trend.reduce((m, x) => (trendValue(x) > trendValue(m) ? x : m), trend[0]).date === d.date;
-                  return (
-                    <div key={d.date} className="dtrend-grid">
-                      <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                        {d.date.slice(5).replace('-', '/')}{d.date === dayKey(0) ? '（今天）' : ''}
-                        {isPeak && <span className="badge peak">峰值</span>}
-                      </span>
-                      <span className="dtrend-side">
-                        <span className={`dtrend-delta ${delta == null ? '' : delta >= 0 ? 'up' : 'down'}`}>{delta == null ? '—' : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(1)}%`}</span>
-                        <b className="dtrend-val">{fmtNum(v)}</b>
-                      </span>
-                    </div>
-                  );
-                })}
               </div>
             </section>
           )}
