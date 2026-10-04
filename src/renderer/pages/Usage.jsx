@@ -164,6 +164,20 @@ export default function Usage({ state, accounts, settings, showToast }) {
                 </div>
               </div>
               <div className="rows">
+                <p className="hint block" style={{ margin: '2px 2px 8px' }}>
+                  {(() => {
+                    const winSum = trend.reduce((s, d) => s + trendValue(d), 0);
+                    if (trend.length === 0 || winSum <= 0) return '暂无消耗记录';
+                    const winAvg = winSum / trend.length;
+                    let peak = trend[0];
+                    for (const d of trend) if (trendValue(d) > trendValue(peak)) peak = d;
+                    const peakTxt = `峰值 ${peak.date.slice(5).replace('-', '/')}${peak.date === dayKey(0) ? '（今天）' : ''} ${fmtNum(trendValue(peak))}`;
+                    const topModelTxt = trendModel === '__total__' && modelNames.length > 0
+                      ? `，最耗模型 ${modelNames[0]}（占 ${(trend.reduce((s, d) => s + (d.models?.[modelNames[0]] || 0), 0) / winSum * 100).toFixed(0)}%）`
+                      : '';
+                    return `近 ${trend.length} 天合计 ${fmtNum(winSum)}（日均 ${fmtNum(winAvg)}），${peakTxt}${topModelTxt}`;
+                  })()}
+                </p>
                 <div className="dtrend-grid dtrend-head">
                   <span>日期</span><span>较前一日</span><span className="r">消耗</span>
                 </div>
@@ -176,9 +190,13 @@ export default function Usage({ state, accounts, settings, showToast }) {
                   const prevVal = prevDay ? (trendModel === '__total__' ? prevDay.total : (prevDay.models?.[trendModel] ?? 0)) : null;
                   const v = trendValue(d);
                   const delta = prevVal != null && prevVal > 0 && v != null ? ((v - prevVal) / prevVal) * 100 : null;
+                  const isPeak = trendValue(d) > 0 && trend.reduce((m, x) => (trendValue(x) > trendValue(m) ? x : m), trend[0]).date === d.date;
                   return (
                     <div key={d.date} className="dtrend-grid">
-                      <span className="hint">{d.date.slice(5).replace('-', '/')}{d.date === dayKey(0) ? '（今天）' : ''}</span>
+                      <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        {d.date.slice(5).replace('-', '/')}{d.date === dayKey(0) ? '（今天）' : ''}
+                        {isPeak && <span className="badge">峰值</span>}
+                      </span>
                       <span className={`dtrend-delta ${delta == null ? '' : delta >= 0 ? 'up' : 'down'}`}>{delta == null ? '—' : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(1)}%`}</span>
                       <b className="dtrend-val">{fmtNum(v)}</b>
                     </div>

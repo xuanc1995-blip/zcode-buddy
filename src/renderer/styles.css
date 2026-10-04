@@ -194,6 +194,13 @@ body::before {
   font-size: 11px; padding: 2px 8px; border-radius: 999px;
 }
 
+/* 剩余可撑预测 chip：按近 7 天日均消耗估算，不足 2 天转警示色 */
+.eta-chip {
+  display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; background: var(--panel); border: 1px solid var(--panel-line); color: var(--text-dim);
+}
+.eta-chip.warn { background: rgba(245, 166, 35, 0.13); color: var(--warn); border-color: transparent; }
+
 /* 卡片/快捷卡入场动画 */
 .enter { animation: fadeUp .35s cubic-bezier(.22,.9,.35,1) both; }
 

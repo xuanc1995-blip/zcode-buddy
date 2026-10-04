@@ -5,6 +5,26 @@ import {
 } from '../components/icons.jsx';
 import { fmtNum, approxNum, fmtToken, fmtDate, fmtExpiry, usedToday } from '../util.js';
 
+/**
+ * 按近 7 天日均消耗估算账号剩余额度还能撑几天（daily.json）。
+ * 返回 null = 无法估算（无剩余数据或近 7 天无消耗记录）。
+ */
+function estimateDaysLeft(account, daily) {
+  if (!daily || !account.quota || account.quota.remaining == null) return null;
+  const days = daily.days.slice(-7);
+  if (days.length === 0) return null;
+  const sum = days.reduce((s, d) => s + (d.accounts?.[account.id]?.total ?? 0), 0);
+  const avg = sum / 7;
+  if (avg <= 0) return null;
+  return account.quota.remaining / avg;
+}
+
+function etaChipText(eta) {
+  if (eta < 0.15) return '≈今日内耗尽';
+  if (eta < 1) return `≈可撑 ${Math.max(1, Math.round(eta * 24))} 小时`;
+  return `≈可撑 ${eta.toFixed(1)} 天`;
+}
+
 /** 切换方式选择器：默认值跟随全局设置，选择结果经 onChange 回传（ref 保最新值供确认时读取） */
 function SwitchModeChoice({ defaultMode, onChange }) {
   const [mode, setMode] = useState(defaultMode);
@@ -26,6 +46,7 @@ export default function Accounts({ state, accounts, settings, busy, run, setConf
   const [loggingIn, setLoggingIn] = useState(false);
   const [loginUrl, setLoginUrl] = useState(null);
   const [loginHistory, setLoginHistory] = useState([]);
+  const [daily, setDaily] = useState(null); // 每日聚合：用于「≈可撑 X 天」预测
   const currentId = state?.current?.shortId;
 
   // 登录历史：从操作记录里取登录相关事件（登录态变化/切换/回滚/添加/自动保存）
@@ -34,6 +55,11 @@ export default function Accounts({ state, accounts, settings, busy, run, setConf
     window.buddy.activityList?.().then((list) => {
       setLoginHistory((list || []).filter((e) => types.includes(e.type)).slice(0, 8));
     }).catch(() => {});
+  }, [accounts]);
+
+  // 每日聚合（额度刷新/账号变化后顺带刷新，供剩余可撑预测）
+  useEffect(() => {
+    window.buddy.statsDaily?.().then(setDaily).catch(() => {});
   }, [accounts]);
 
   // 浏览器登录进度：主进程广播授权链接，页面内展示可点击的横幅
@@ -189,6 +215,11 @@ export default function Accounts({ state, accounts, settings, busy, run, setConf
                   <span>{q?.plan?.tier || '—'}</span>
                   {q?.plan?.expiresAt && <span>· {fmtExpiry(q.plan.expiresAt)}</span>}
                   {today != null && today > 0 && <span className="today-chip">今日消耗 {fmtToken(today)}</span>}
+                  {(() => {
+                    const eta = estimateDaysLeft(a, daily);
+                    if (eta == null) return null;
+                    return <span className={`eta-chip ${eta < 2 ? 'warn' : ''}`} title="按近 7 天日均消耗估算">{etaChipText(eta)}</span>;
+                  })()}
                 </div>
 
                 {q && !q.isEmpty && (
