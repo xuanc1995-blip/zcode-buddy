@@ -100,6 +100,36 @@ function readDailyUsed(dateKey, accountId) {
   return v == null ? null : (typeof v === 'object' ? (v.total ?? null) : v);
 }
 
+/** 合并补录每日消耗记录（备份导入用）：只填充本地缺失的日期，已有日期以本地为准。返回补入的天数 */
+function mergeDailyRecords(days) {
+  if (!Array.isArray(days) || days.length === 0) return 0;
+  const data = readDailyRaw();
+  let added = 0;
+  for (const d of days) {
+    if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d.date || '') || data.days[d.date]) continue;
+    const accounts = {};
+    for (const [id, v] of Object.entries(d.accounts || {})) {
+      const entry = normalizeAccountEntry(v);
+      if (entry.total == null) continue;
+      accounts[id] = entry.models && Object.keys(entry.models).length > 0
+        ? { total: entry.total, models: entry.models }
+        : { total: entry.total };
+    }
+    if (Object.keys(accounts).length === 0) continue;
+    data.days[d.date] = { accounts, total: Object.values(accounts).reduce((s, v) => s + (v.total || 0), 0) };
+    added++;
+  }
+  if (added === 0) return 0;
+  const keys = Object.keys(data.days).sort();
+  for (const k of keys.slice(0, Math.max(0, keys.length - DAILY_MAX_DAYS))) delete data.days[k];
+  try {
+    fs.writeFileSync(DAILY_FILE, JSON.stringify(data, null, 2), 'utf8');
+    return added;
+  } catch (_) {
+    return 0;
+  }
+}
+
 function ensureStore() {
   if (!fs.existsSync(STORE_DIR)) fs.mkdirSync(STORE_DIR, { recursive: true });
 }
@@ -289,4 +319,5 @@ module.exports = {
   recordDailySample,
   readDailySummary,
   readDailyUsed,
+  mergeDailyRecords,
 };

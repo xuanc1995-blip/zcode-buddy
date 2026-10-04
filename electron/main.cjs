@@ -418,7 +418,7 @@ function registerIpc() {
     });
     if (canceled || filePaths.length === 0) return { canceled: true };
     const result = exporter.importFromFile(filePaths[0], passphrase);
-    logActivity('import', `导入备份：新增 ${result.imported} 个`);
+    logActivity('import', `导入备份：新增 ${result.imported} 个` + (result.dailyAdded ? `，补录 ${result.dailyAdded} 天消耗历史` : ''));
     broadcast('quota:updated');
     return { canceled: false, ...result };
   });

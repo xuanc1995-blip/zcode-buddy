@@ -38,7 +38,7 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
 
   const doImport = () => run(async () => {
     const r = await window.buddy.importData(pass);
-    if (!r.canceled) showToast(`导入完成：新增 ${r.imported} 个，跳过已存在 ${r.skipped} 个`);
+    if (!r.canceled) showToast(`导入完成：新增 ${r.imported} 个，跳过已存在 ${r.skipped} 个` + (r.dailyAdded ? `，补录 ${r.dailyAdded} 天消耗历史` : ''));
   });
 
   const transparency = draft.transparency ?? 0;
@@ -136,7 +136,7 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
 
       <section className="panel">
         <h2><IconDownload size={15} /> 数据备份</h2>
-        <p className="hint block">把所有账号快照加密导出为 .zbak 文件（AES-256-GCM），可用于跨电脑迁移或手动备份；导入时按账号自动合并。口令用于加解密，丢失后无法恢复备份。</p>
+        <p className="hint block">把所有账号快照加密导出为 .zbak 文件（AES-256-GCM），并携带最近 120 天的每日消耗历史；可用于跨电脑迁移或手动备份，导入时按账号合并、自动补录缺失日期的消耗记录。口令用于加解密，丢失后无法恢复备份。</p>
         <label className="field">
           <span>备份口令（至少 4 位）</span>
           <input

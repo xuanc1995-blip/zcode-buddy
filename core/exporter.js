@@ -29,6 +29,8 @@ function exportToFile(filePath, passphrase) {
   const plain = Buffer.from(JSON.stringify({
     exportedAt: Date.now(),
     accounts,
+    // 每日消耗历史（最近 120 天，含分模型）随备份携带；旧版导入方会忽略此字段，向前兼容
+    daily: store.readDailySummary({ days: 120 }),
   }), 'utf8');
 
   const salt = crypto.randomBytes(SALT_LEN);
@@ -85,7 +87,9 @@ function importFromFile(filePath, passphrase) {
       imported++;
     }
   }
-  return { imported, skipped };
+  // 每日消耗历史（v0.6.13 起随备份携带）：只补录本地缺失的日期，本地已有日期不覆盖
+  const dailyAdded = store.mergeDailyRecords(data.daily);
+  return { imported, skipped, dailyAdded };
 }
 
 module.exports = { exportToFile, importFromFile };

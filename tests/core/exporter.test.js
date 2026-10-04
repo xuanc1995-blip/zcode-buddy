@@ -26,6 +26,7 @@ function seedAccount(id, name) {
 
 describe('exporter', () => {
   let backupPath;
+  let withDailyPath;
 
   before(() => {
     fs.rmSync(store.STORE_DIR, { recursive: true, force: true });
@@ -64,5 +65,29 @@ describe('exporter', () => {
     const bad = path.join(TMP, 'bad.zbak');
     fs.writeFileSync(bad, Buffer.from('this is not a backup at all....'));
     assert.throws(() => importFromFile(bad, 'pass-1234'), /不是有效的/);
+  });
+
+  test('备份携带每日消耗历史，导入时补录缺失日期（含分模型）', () => {
+    fs.rmSync(store.DAILY_FILE, { force: true });
+    store.recordDailySample('gggggggg', 500, { models: { 'GLM-5.3': 300, 'GLM-4.6': 200 } });
+    withDailyPath = path.join(TMP, 'with-daily.zbak');
+    exportToFile(withDailyPath, 'pass-1234');
+
+    // 模拟新机器：清空每日历史后再导入
+    fs.rmSync(store.DAILY_FILE, { force: true });
+    const r = importFromFile(withDailyPath, 'pass-1234');
+    assert.equal(r.dailyAdded, 1);
+    const days = store.readDailySummary({ days: 7 });
+    assert.equal(days[0].total, 500);
+    assert.deepEqual(days[0].models, { 'GLM-5.3': 300, 'GLM-4.6': 200 });
+  });
+
+  test('导入不覆盖本地已有的每日记录', () => {
+    store.recordDailySample('hhhhhhhh', 999);
+    const r = importFromFile(withDailyPath, 'pass-1234');
+    assert.equal(r.dailyAdded, 0); // 今天本地已有记录，备份里的 500 不覆盖
+    assert.equal(store.readDailyUsed(store.localDateKey(Date.now()), 'hhhhhhhh'), 999); // 本地值保留
+    assert.equal(store.readDailyUsed(store.localDateKey(Date.now()), 'gggggggg'), 500); // 备份补录的仍在
+    assert.equal(store.readDailyUsed(store.localDateKey(Date.now())), 1499); // 合计 = 两者之和
   });
 });
