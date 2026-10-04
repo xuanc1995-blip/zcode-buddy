@@ -134,7 +134,7 @@ export default function Usage({ state, accounts, settings, showToast }) {
                       <span className="hint">{a.quota?.plan?.tier || '—'}</span>
                     </div>
                     <b className="acc-num">{today != null ? fmtNum(today) : '—'}</b>
-                    <b className="acc-num">{yesterday != null ? fmtNum(yesterday) : '—'}</b>
+                    <b className="acc-num dim">{yesterday != null ? fmtNum(yesterday) : '—'}</b>
                     <div className="acc-rem">
                       <div className="model-bar"><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
                       <em className="usage-pct">{pct != null ? `剩${pct.toFixed(0)}%` : '—'}</em>
