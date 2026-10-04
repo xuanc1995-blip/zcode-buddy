@@ -11,14 +11,11 @@ function dayKey(offset = 0) {
 }
 
 /** 用量统计页：单账号 / 全部合并两种视图，当日 + 总计两组数字 */
-export default function Usage({ state, accounts, settings, showToast }) {
+export default function Usage({ state, accounts, settings }) {
   const currentId = state?.current?.shortId;
   const [mode, setMode] = useState('merged'); // 'merged' | 'single'
   const [selId, setSelId] = useState(null);
   const [daily, setDaily] = useState(null); // 按日聚合（daily.json），跨 48 小时历史上限仍可看昨日/近 7 天
-  const [trendDays, setTrendDays] = useState(7); // 趋势区间：7 / 30 天
-  const [trendModel, setTrendModel] = useState('__total__'); // 趋势视角：合计或某模型
-  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     window.buddy.statsDaily?.().then(setDaily).catch(() => {});
@@ -26,25 +23,8 @@ export default function Usage({ state, accounts, settings, showToast }) {
 
   const dailyMap = daily ? Object.fromEntries(daily.days.map((d) => [d.date, d])) : {};
   const yesterdayDaily = dailyMap[dayKey(1)]?.total ?? null;
-  const trend = daily ? daily.days.slice(-trendDays) : [];
-  // 趋势视角：合计 或 某个模型（模型清单=窗口期内出现过的，按窗口总量降序）
-  const modelNames = Object.keys(Object.assign({}, ...trend.map((d) => d.models || {})));
-  modelNames.sort((a, b) => (trend.reduce((s, d) => s + (d.models?.[b] || 0), 0)) - (trend.reduce((s, d) => s + (d.models?.[a] || 0), 0)));
-  const trendValue = (d) => (trendModel === '__total__' ? (d.total || 0) : (d.models?.[trendModel] || 0));
-  // 概览卡：近 7 天合计（固定 7 天窗口，与趋势区的切换无关）
+  // 概览卡：近 7 天合计（固定 7 天窗口）
   const last7Sum = daily ? daily.days.slice(-7).reduce((s, d) => s + (d.total || 0), 0) : null;
-
-  const doExport = async () => {
-    setExporting(true);
-    try {
-      const r = await window.buddy.exportDailyCsv();
-      if (!r.canceled) showToast(r.empty ? '暂无可导出的每日数据' : `已导出 ${r.days} 天数据到 CSV`);
-    } catch (e) {
-      showToast(e.message.replace(/^.*Error: /, ''), 'err');
-    } finally {
-      setExporting(false);
-    }
-  };
 
   const withData = accounts.filter((a) => a.quota && a.quota.percentUsed != null);
   const merged = {
@@ -145,72 +125,6 @@ export default function Usage({ state, accounts, settings, showToast }) {
             <p className="hint block">「今日消耗」为服务器实时口径（各活跃额度当日已用之和）；「昨日 / 近 7 天」来自按日聚合存档（daily.json），应用关闭期间的数据在下次启动后仍完整保留。本地历史共 {merged.points} 个采样点（每账号每 5 分钟一个）。</p>
           </section>
 
-          {trend.length > 0 && (
-            <section className="panel">
-              <div className="page-head" style={{ marginBottom: 4 }}>
-                <h2>每日消耗趋势{trendModel !== '__total__' ? ` · ${trendModel}` : '（全部账号合计）'}</h2>
-                <div className="row-gap">
-                  {modelNames.length > 0 && (
-                    <select className="select" value={trendModel} onChange={(e) => setTrendModel(e.target.value)}>
-                      <option value="__total__">全部模型合计</option>
-                      {modelNames.map((m) => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  )}
-                  <div className="theme-switch segmented">
-                    <button className={`theme-btn ${trendDays === 7 ? 'active' : ''}`} onClick={() => setTrendDays(7)}>7 天</button>
-                    <button className={`theme-btn ${trendDays === 30 ? 'active' : ''}`} onClick={() => setTrendDays(30)}>30 天</button>
-                  </div>
-                  <button className="btn ghost" disabled={exporting} onClick={doExport}>导出 CSV</button>
-                </div>
-              </div>
-              <div className="rows">
-                <div className="sum-row">
-                  {(() => {
-                    const winSum = trend.reduce((s, d) => s + trendValue(d), 0);
-                    let peak = trend[0];
-                    for (const d of trend) if (trendValue(d) > trendValue(peak)) peak = d;
-                    const fmtShort = (v) => (v == null ? '—' : (approxNum(v) || fmtNum(Math.round(v))));
-                    const chips = [
-                      { k: '合计', v: fmtShort(winSum) },
-                      { k: '日均', v: fmtShort(winSum / trend.length) },
-                      { k: '峰值', v: `${peak.date.slice(5).replace('-', '/')} ${fmtShort(trendValue(peak))}` },
-                    ];
-                    if (trendModel === '__total__' && modelNames.length > 0 && winSum > 0) {
-                      chips.push({ k: '最耗', v: `${modelNames[0]} ${(trend.reduce((s, d) => s + (d.models?.[modelNames[0]] || 0), 0) / winSum * 100).toFixed(0)}%` });
-                    }
-                    return chips.map(({ k, v }) => (
-                      <span key={k} className="sum-chip">{k} <b>{v}</b></span>
-                    ));
-                  })()}
-                </div>
-                <div className="dtrend-grid">
-                  {[...trend].reverse().map((d) => {
-                    const t = new Date(`${d.date}T00:00:00`);
-                    t.setDate(t.getDate() - 1);
-                    const p2 = (n) => String(n).padStart(2, '0');
-                    const prevKey = `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())}`;
-                    const prevDay = dailyMap[prevKey];
-                    const prevVal = prevDay ? (trendModel === '__total__' ? prevDay.total : (prevDay.models?.[trendModel] ?? 0)) : null;
-                    const v = trendValue(d);
-                    const delta = prevVal != null && prevVal > 0 && v != null ? ((v - prevVal) / prevVal) * 100 : null;
-                    const isPeak = trendValue(d) > 0 && trend.reduce((m, x) => (trendValue(x) > trendValue(m) ? x : m), trend[0]).date === d.date;
-                    return (
-                      <div key={d.date} className="dtrend-card">
-                        <span className="dtrend-who">
-                          {d.date.slice(5).replace('-', '/')}{d.date === dayKey(0) ? '（今天）' : ''}
-                          {isPeak && <span className="badge peak">峰值</span>}
-                        </span>
-                        <span className="dtrend-side">
-                          <span className={`dtrend-delta ${delta == null ? '' : delta >= 0 ? 'up' : 'down'}`}>{delta == null ? '—' : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(1)}%`}</span>
-                          <b className="dtrend-val">{fmtNum(v)}</b>
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </section>
-          )}
         </>
       ) : (
         <>

@@ -22,7 +22,6 @@ contextBridge.exposeInMainWorld('buddy', {
   getTheme: () => ipcRenderer.invoke('theme:current'),
   activityList: () => ipcRenderer.invoke('activity:list'),
   statsDaily: () => ipcRenderer.invoke('stats:daily'),
-  exportDailyCsv: () => ipcRenderer.invoke('stats:daily:export'),
   updaterGetStatus: () => ipcRenderer.invoke('updater:getStatus'),
   updaterCheck: () => ipcRenderer.invoke('updater:check'),
   updaterDownload: () => ipcRenderer.invoke('updater:download'),
