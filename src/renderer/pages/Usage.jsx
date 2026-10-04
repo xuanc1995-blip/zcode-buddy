@@ -115,23 +115,31 @@ export default function Usage({ state, accounts, settings, showToast }) {
           <section className="panel">
             <h2 style={{ marginBottom: 4 }}>各账号用量</h2>
             <div className="rows">
+              <div className="acc-grid acc-head">
+                <span>账号</span>
+                <span className="r">今日消耗</span>
+                <span className="r">昨日消耗</span>
+                <span>剩余额度</span>
+              </div>
               {accounts.map((a) => {
                 const today = a.todayUsed ?? usedToday(a.history);
                 const yesterday = dailyMap[dayKey(1)]?.accounts?.[a.id]?.total ?? usedYesterday(a.history);
                 const pct = a.quota?.percentUsed != null ? 100 - a.quota.percentUsed : null;
                 const isCurrent = a.id === currentId;
                 return (
-                  <div key={a.id} className="usage-row">
+                  <div key={a.id} className="acc-grid">
                     <div className="usage-who">
                       <Avatar name={a.name} id={a.id} size={32} />
                       <b>{a.name}</b>
                       {isCurrent && <span className="badge">当前</span>}
                       <span className="hint">{a.quota?.plan?.tier || '—'}</span>
                     </div>
-                    <div className="usage-col"><span className="uc-label">今日</span><b className="uc-val">{today != null ? fmtNum(today) : '—'}</b></div>
-                    <div className="usage-col"><span className="uc-label">昨日</span><b className="uc-val">{yesterday != null ? fmtNum(yesterday) : '—'}</b></div>
-                    <div className="model-bar"><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
-                    <em className="usage-pct">{pct != null ? `剩${pct.toFixed(0)}%` : '—'}</em>
+                    <b className="acc-num">{today != null ? fmtNum(today) : '—'}</b>
+                    <b className="acc-num">{yesterday != null ? fmtNum(yesterday) : '—'}</b>
+                    <div className="acc-rem">
+                      <div className="model-bar"><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
+                      <em className="usage-pct">{pct != null ? `剩${pct.toFixed(0)}%` : '—'}</em>
+                    </div>
                   </div>
                 );
               })}
