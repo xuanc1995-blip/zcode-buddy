@@ -117,9 +117,9 @@ export default function Usage({ state, accounts, settings, showToast }) {
                 <div className="acc-grid acc-head">
                   <span>账号</span>
                   <span className="r">今日消耗</span>
-                  <span className="r">昨日消耗</span>
                   <span className="r">剩余额度</span>
                   <span className="r">已用比例</span>
+                  <span className="r">昨日消耗</span>
                 </div>
                 {accounts.map((a) => {
                   const today = a.todayUsed ?? usedToday(a.history);
@@ -135,9 +135,9 @@ export default function Usage({ state, accounts, settings, showToast }) {
                         <span className="hint">{a.quota?.plan?.tier || '—'}</span>
                       </div>
                       <b className="acc-num">{today != null ? fmtNum(today) : '—'}</b>
-                      <b className="acc-num dim">{yesterday != null ? fmtNum(yesterday) : '—'}</b>
                       <b className="acc-num">{a.quota?.remaining != null ? fmtNum(a.quota.remaining) : '—'}</b>
                       <b className="acc-num dim">{pct != null ? `${pct.toFixed(1)}%` : '—'}</b>
+                      <b className="acc-num dim">{yesterday != null ? fmtNum(yesterday) : '—'}</b>
                     </div>
                   );
                 })}
