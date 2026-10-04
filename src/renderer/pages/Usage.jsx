@@ -184,7 +184,8 @@ export default function Usage({ state, accounts, settings, showToast }) {
                   })()}
                 </div>
                 <div className="dtrend-grid dtrend-head">
-                  <span>日期</span><span>较前一日</span><span className="r">消耗</span>
+                  <span>日期</span>
+                  <span className="dtrend-side"><span>较前一日</span><span>消耗</span></span>
                 </div>
                 {[...trend].reverse().map((d) => {
                   const t = new Date(`${d.date}T00:00:00`);
@@ -202,8 +203,10 @@ export default function Usage({ state, accounts, settings, showToast }) {
                         {d.date.slice(5).replace('-', '/')}{d.date === dayKey(0) ? '（今天）' : ''}
                         {isPeak && <span className="badge peak">峰值</span>}
                       </span>
-                      <span className={`dtrend-delta ${delta == null ? '' : delta >= 0 ? 'up' : 'down'}`}>{delta == null ? '—' : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(1)}%`}</span>
-                      <b className="dtrend-val">{fmtNum(v)}</b>
+                      <span className="dtrend-side">
+                        <span className={`dtrend-delta ${delta == null ? '' : delta >= 0 ? 'up' : 'down'}`}>{delta == null ? '—' : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(1)}%`}</span>
+                        <b className="dtrend-val">{fmtNum(v)}</b>
+                      </span>
                     </div>
                   );
                 })}

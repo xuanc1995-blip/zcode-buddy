@@ -609,16 +609,21 @@ body::before {
 .acc-rem { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .acc-rem .model-bar { flex: 1; width: auto; min-width: 60px; height: 8px; }
 
-/* 每日消耗趋势：紧凑记录列表（日期 | 较前一日 | 消耗），最新在上
-   三列等宽（与上方摘要 chips 的等分节奏一致），中间不再留大块空白 */
+/* 每日消耗趋势：紧凑记录列表，最新在上。
+   两列结构：日期在左；右侧一组「环比 pill + 消耗值」紧密相邻（环比描述的就是它旁边的数值，
+   拆成远距离列会让两者失去关联），组内右对齐贴面板右缘 */
 .dtrend-grid {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px; align-items: center; padding: 10px 2px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px; align-items: center; padding: 9px 2px;
 }
 .dtrend-grid + .dtrend-grid { border-top: 1px solid var(--panel-line); }
 .dtrend-head { padding: 0 2px 8px; font-size: 11.5px; color: var(--text-faint); border-bottom: 1px solid var(--panel-line); }
-.dtrend-head .r { text-align: right; }
-.dtrend-delta { font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.dtrend-side { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.dtrend-side > :last-child { min-width: 110px; text-align: right; }
+.dtrend-delta {
+  font-size: 11.5px; font-variant-numeric: tabular-nums;
+  padding: 3px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--panel-line);
+}
 .dtrend-delta.up { color: var(--warn); }
 .dtrend-delta.down { color: var(--ok); }
-.dtrend-val { text-align: right; font-size: 12.5px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dtrend-val { font-size: 12.5px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
