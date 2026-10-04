@@ -33,6 +33,7 @@
 core/                 # 零依赖 Node 核心（可独立 CLI）
   paths.js            #   路径常量 + ZCode.exe 定位（含运行中进程反查，适配非标准安装路径）
   crypto.js           #   ZCode enc:v1 字段解密（aes-256-gcm）
+  （安全）账号 id 写入前强制白名单校验（^[A-Za-z0-9_-]{1,64}$）防路径穿越；快照与 daily.json 均为 tmp+rename 原子写；窗口外链走系统浏览器、will-navigate 已拦截（v0.6.14 审查加固）
   fingerprint.js      #   从登录态提取账号身份（user_id/邮箱）
   store.js            #   快照存储 + 额度缓存 + 当日消耗计算 + 历史记录（576 点）+ 每日聚合（daily.json，120 天）
   switcher.js         #   进程检测/备份/原子替换/回滚（切换核心）+ 热切换（agent 子进程重启）
