@@ -11,7 +11,7 @@ function dayKey(offset = 0) {
 }
 
 /** 用量统计页：单账号 / 全部合并两种视图，当日 + 总计两组数字 */
-export default function Usage({ state, accounts, showToast }) {
+export default function Usage({ state, accounts, settings, showToast }) {
   const currentId = state?.current?.shortId;
   const [mode, setMode] = useState('merged'); // 'merged' | 'single'
   const [selId, setSelId] = useState(null);
@@ -32,6 +32,8 @@ export default function Usage({ state, accounts, showToast }) {
   modelNames.sort((a, b) => (trend.reduce((s, d) => s + (d.models?.[b] || 0), 0)) - (trend.reduce((s, d) => s + (d.models?.[a] || 0), 0)));
   const trendValue = (d) => (trendModel === '__total__' ? (d.total || 0) : (d.models?.[trendModel] || 0));
   const maxTrend = Math.max(...trend.map(trendValue), 1);
+  // 概览卡：近 7 天合计（固定 7 天窗口，与趋势区的切换无关）
+  const last7Sum = daily ? daily.days.slice(-7).reduce((s, d) => s + (d.total || 0), 0) : null;
 
   const doExport = async () => {
     setExporting(true);
@@ -53,6 +55,8 @@ export default function Usage({ state, accounts, showToast }) {
     remaining: withData.reduce((s, a) => s + (a.quota.remaining || 0), 0),
     points: withData.reduce((s, a) => s + (a.history || []).length, 0),
   };
+  const threshold = settings?.lowQuotaThreshold ?? 10;
+  const lowCount = withData.filter((a) => 100 - a.quota.percentUsed < threshold).length;
 
   // 单账号视图的当前选中账号
   const singleId = accounts.find((a) => a.id === selId) ? selId
@@ -86,19 +90,24 @@ export default function Usage({ state, accounts, showToast }) {
         <div className="empty"><p>暂无账号数据</p><p className="dim">先到「账号管理」保存账号，额度自动刷新后这里会出现统计</p></div>
       ) : mode === 'merged' ? (
         <>
-          {/* 合并视图：当日 + 总计 两组汇总 */}
+          {/* 合并视图：当日 / 消耗走势 / 当前状态 三组，各自同维度 */}
           <section className="merged-cards">
             <div className="merged-group">
-              <span className="sec-label">当日（按各账号历史记录累加）</span>
+              <span className="sec-label">当日（服务器实时口径）</span>
               <div className="stat"><span className="stat-label">今日总消耗</span><span className="stat-num">{merged.today > 0 ? fmtNum(merged.today) : '—'}</span><span className="stat-approx">{merged.today > 0 && approxNum(merged.today)}</span></div>
             </div>
             <div className="merged-group">
-              <span className="sec-label">概览</span>
+              <span className="sec-label">消耗走势</span>
               <div className="stat-grid4">
                 <div className="stat"><span className="stat-label">昨日消耗</span><span className="stat-num">{merged.yesterday != null ? fmtNum(merged.yesterday) : '—'}</span><span className="stat-approx">{merged.yesterday != null && approxNum(merged.yesterday)}</span></div>
+                <div className="stat"><span className="stat-label">近 7 天合计</span><span className="stat-num">{last7Sum != null && last7Sum > 0 ? fmtNum(last7Sum) : '—'}</span><span className="stat-approx">{last7Sum > 0 && approxNum(last7Sum)}</span></div>
+              </div>
+            </div>
+            <div className="merged-group">
+              <span className="sec-label">当前状态</span>
+              <div className="stat-grid4">
                 <div className="stat"><span className="stat-label">全部剩余</span><span className="stat-num">{fmtNum(merged.remaining)}</span><span className="stat-approx">{approxNum(merged.remaining)}</span></div>
-                <div className="stat"><span className="stat-label">账号数</span><span className="stat-num">{accounts.length}</span></div>
-                <div className="stat"><span className="stat-label">历史点数</span><span className="stat-num">{merged.points}</span></div>
+                <div className={`stat ${lowCount > 0 ? 'warn' : ''}`}><span className="stat-label">低额度账号（&lt;{threshold}%）</span><span className="stat-num">{lowCount}</span></div>
               </div>
             </div>
           </section>
@@ -127,7 +136,7 @@ export default function Usage({ state, accounts, showToast }) {
                 );
               })}
             </div>
-            <p className="hint block">「今日消耗」为服务器实时口径（各活跃额度当日已用之和）；「昨日 / 近 7 天」来自按日聚合存档（daily.json），应用关闭期间的数据在下次启动后仍完整保留。</p>
+            <p className="hint block">「今日消耗」为服务器实时口径（各活跃额度当日已用之和）；「昨日 / 近 7 天」来自按日聚合存档（daily.json），应用关闭期间的数据在下次启动后仍完整保留。本地历史共 {merged.points} 个采样点（每账号每 5 分钟一个）。</p>
           </section>
 
           {trend.length > 0 && (
