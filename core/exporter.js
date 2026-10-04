@@ -73,7 +73,8 @@ function importFromFile(filePath, passphrase) {
   let imported = 0;
   let skipped = 0;
   for (const account of data.accounts || []) {
-    if (!account || !account.id || !account.credentials) { skipped++; continue; }
+    // id 会拼进快照文件路径：来自外部备份文件，必须先校验格式，杜绝目录穿越
+    if (!account || !store.isValidAccountId(account.id) || !account.credentials) { skipped++; continue; }
     const existing = store.readAccount(account.id);
     if (existing) {
       // 已存在：保留本地命名与使用记录，仅补充本地缺失的数据（额度、历史），计入「跳过已存在」

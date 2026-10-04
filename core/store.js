@@ -58,7 +58,7 @@ function recordDailySample(accountId, todayUsed, { models, now = Date.now() } = 
   for (const k of keys.slice(0, Math.max(0, keys.length - DAILY_MAX_DAYS))) delete data.days[k];
 
   try {
-    fs.writeFileSync(DAILY_FILE, JSON.stringify(data, null, 2), 'utf8');
+    atomicWriteFileSync(DAILY_FILE, JSON.stringify(data, null, 2));
     return true;
   } catch (_) {
     return false;
@@ -123,7 +123,7 @@ function mergeDailyRecords(days) {
   const keys = Object.keys(data.days).sort();
   for (const k of keys.slice(0, Math.max(0, keys.length - DAILY_MAX_DAYS))) delete data.days[k];
   try {
-    fs.writeFileSync(DAILY_FILE, JSON.stringify(data, null, 2), 'utf8');
+    atomicWriteFileSync(DAILY_FILE, JSON.stringify(data, null, 2));
     return added;
   } catch (_) {
     return 0;
@@ -134,7 +134,26 @@ function ensureStore() {
   if (!fs.existsSync(STORE_DIR)) fs.mkdirSync(STORE_DIR, { recursive: true });
 }
 
+// 账号 id（fingerprint.shortId）允许的字符集。写文件前强校验，杜绝 id 拼路径的目录穿越
+const ACCOUNT_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+function isValidAccountId(id) {
+  return typeof id === 'string' && ACCOUNT_ID_RE.test(id);
+}
+
+function assertValidAccountId(id) {
+  if (!isValidAccountId(id)) throw new Error(`非法的账号标识：${String(id).slice(0, 32)}`);
+}
+
+/** 原子写：先写同目录 .tmp 再 rename，避免进程中断留下半写的快照/聚合文件 */
+function atomicWriteFileSync(file, content) {
+  const tmp = `${file}.tmp`;
+  fs.writeFileSync(tmp, content, 'utf8');
+  fs.renameSync(tmp, file);
+}
+
 function accountFile(id) {
+  assertValidAccountId(id);
   return path.join(STORE_DIR, `${id}.json`);
 }
 
@@ -147,8 +166,9 @@ function readAccount(id) {
 }
 
 function writeAccount(account) {
+  assertValidAccountId(account.id);
   ensureStore();
-  fs.writeFileSync(accountFile(account.id), JSON.stringify(account, null, 2), 'utf8');
+  atomicWriteFileSync(accountFile(account.id), JSON.stringify(account, null, 2));
 }
 
 /**
@@ -234,6 +254,7 @@ function findAccount(query) {
 }
 
 function renameAccount(id, name) {
+  assertValidAccountId(id);
   const account = readAccount(id);
   if (!account) throw new Error(`账号不存在：${id}`);
   account.name = name.trim();
@@ -243,6 +264,7 @@ function renameAccount(id, name) {
 }
 
 function deleteAccount(id) {
+  assertValidAccountId(id);
   const file = accountFile(id);
   if (!fs.existsSync(file)) throw new Error(`账号不存在：${id}`);
   fs.rmSync(file);
@@ -307,6 +329,7 @@ module.exports = {
   STORE_DIR,
   DAILY_FILE,
   localDateKey,
+  isValidAccountId,
   captureCurrent,
   listAccounts,
   findAccount,

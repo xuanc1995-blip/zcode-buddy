@@ -589,6 +589,13 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
 
+  // 安全防护：外链走系统浏览器（target=_blank 不再新开 Electron 窗口），SPA 内禁止页面导航
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  mainWindow.webContents.on('will-navigate', (e) => e.preventDefault());
+
   // 页面就绪后按当前设置应用主题（跟随系统/深/浅），系统切换时实时联动
   mainWindow.webContents.on('did-finish-load', () => applyTheme(loadSettings().theme));
   nativeTheme.on('updated', () => applyTheme(loadSettings().theme));

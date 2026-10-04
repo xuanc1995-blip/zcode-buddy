@@ -90,4 +90,31 @@ describe('exporter', () => {
     assert.equal(store.readDailyUsed(store.localDateKey(Date.now()), 'gggggggg'), 500); // 备份补录的仍在
     assert.equal(store.readDailyUsed(store.localDateKey(Date.now())), 1499); // 合计 = 两者之和
   });
+
+  test('备份中的非法账号 id 被跳过（防目录穿越）', () => {
+    // 手工构造一份带越界 id 的合法加密备份（GCM tag 正确，绕不过格式校验就只能靠 id 白名单）
+    const crypto = require('node:crypto');
+    const salt = crypto.randomBytes(16);
+    const iv = crypto.randomBytes(12);
+    const key = crypto.pbkdf2Sync('pass-1234', salt, 200000, 32, 'sha256');
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    const plain = Buffer.from(JSON.stringify({
+      exportedAt: Date.now(),
+      accounts: [
+        { id: '../../evil', name: '越界写入', credentials: '{"x":1}' },
+        { id: 'valid1234', name: '正常账号', credentials: '{"x":1}' },
+      ],
+    }), 'utf8');
+    const ct = Buffer.concat([cipher.update(plain), cipher.final()]);
+    const p = path.join(TMP, 'malicious.zbak');
+    fs.writeFileSync(p, Buffer.concat([Buffer.from('zcodebuddy-backup v1', 'ascii'), salt, iv, cipher.getAuthTag(), ct]));
+
+    const before = fs.readdirSync(store.STORE_DIR).length;
+    const r = importFromFile(p, 'pass-1234');
+    assert.equal(r.skipped, 1); // 越界 id 被拒
+    assert.equal(r.imported, 1); // 合法 id 正常导入
+    assert.equal(fs.existsSync(path.join(store.STORE_DIR, 'valid1234.json')), true);
+    assert.equal(fs.existsSync(path.resolve(store.STORE_DIR, '../../evil.json')), false);
+    assert.equal(fs.readdirSync(store.STORE_DIR).length, before + 1);
+  });
 });

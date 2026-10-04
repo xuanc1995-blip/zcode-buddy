@@ -71,7 +71,6 @@ async function cmdUse(query, opts) {
     { credentials: account.credentials, config: account.config },
     { restart },
   );
-  account.lastUsedAt = Date.now();
   store.touch(account.id);
   console.log(`完成。${result.wasRunning ? '（ZCode 已关闭）' : ''}${result.restarted ? ' ZCode 已重新启动。' : restart ? ' 请手动启动 ZCode。' : '（--no-restart，未重启 ZCode）'}`);
 }

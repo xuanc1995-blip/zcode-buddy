@@ -61,6 +61,8 @@ function loginViaCli({ zcodeExe, cliPath, timeoutMs = LOGIN_TIMEOUT_MS, onEvent 
 
     let out = '';
     let err = '';
+    let outBuf = '';
+    let errBuf = '';
     let settled = false;
     const finish = (fn, arg) => {
       if (settled) return;
@@ -71,13 +73,19 @@ function loginViaCli({ zcodeExe, cliPath, timeoutMs = LOGIN_TIMEOUT_MS, onEvent 
     };
     const timer = setTimeout(() => finish(reject, new Error('登录超时（5 分钟）——请重试并在浏览器里尽快完成授权')), timeoutMs);
 
+    const handleLine = (line) => {
+      const ev = parseLoginOutput(line);
+      if (ev) emit(ev);
+    };
+    // 按 chunk 逐行解析：缓冲不完整行，避免跨 chunk 边界拆散 URL 行
     const feed = (chunk, into) => {
       const text = chunk.toString('utf8');
-      if (into === 'err') err += text; else out += text;
-      for (const line of text.split(/\r?\n/)) {
-        const ev = parseLoginOutput(line);
-        if (ev) emit(ev);
-      }
+      if (into === 'err') { err += text; errBuf += text; } else { out += text; outBuf += text; }
+      const buf = into === 'err' ? errBuf : outBuf;
+      const lines = buf.split(/\r?\n/);
+      const rest = lines.pop();
+      if (into === 'err') errBuf = rest; else outBuf = rest;
+      for (const line of lines) handleLine(line);
     };
     child.stdout.on('data', (d) => feed(d, 'out'));
     child.stderr.on('data', (d) => feed(d, 'err'));

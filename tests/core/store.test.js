@@ -63,6 +63,15 @@ describe('store：列表与查找', () => {
     assert.equal(store.findAccount('dddddddd'), null);
     assert.throws(() => store.deleteAccount('dddddddd'));
   });
+
+  test('非法 id 拒绝写入/删除（防目录穿越）', () => {
+    for (const bad of ['../../evil', '..\\evil', 'a/b', '..', '.tmp', '白名单外语义的 id?']) {
+      assert.throws(() => store.renameAccount(bad, 'x'), /非法的账号标识/, `rename 应拒绝: ${bad}`);
+      assert.throws(() => store.deleteAccount(bad), /非法的账号标识/, `delete 应拒绝: ${bad}`);
+    }
+    // 读取侧不受影响
+    assert.equal(store.findAccount('../../evil'), null);
+  });
 });
 
 describe('store：saveQuota 历史与当日消耗', () => {
