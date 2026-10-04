@@ -113,35 +113,34 @@ export default function Usage({ state, accounts, settings, showToast }) {
 
           <section className="panel">
             <h2 style={{ marginBottom: 4 }}>各账号用量</h2>
-            <div className="rows">
-              <div className="acc-grid acc-head">
-                <span>账号</span>
-                <span className="r">今日消耗</span>
-                <span className="r">昨日消耗</span>
-                <span>剩余额度</span>
-              </div>
-              {accounts.map((a) => {
-                const today = a.todayUsed ?? usedToday(a.history);
-                const yesterday = dailyMap[dayKey(1)]?.accounts?.[a.id]?.total ?? usedYesterday(a.history);
-                const pct = a.quota?.percentUsed != null ? 100 - a.quota.percentUsed : null;
-                const isCurrent = a.id === currentId;
-                return (
-                  <div key={a.id} className="acc-grid">
-                    <div className="usage-who">
-                      <Avatar name={a.name} id={a.id} size={32} />
-                      <b>{a.name}</b>
-                      {isCurrent && <span className="badge">当前</span>}
-                      <span className="hint">{a.quota?.plan?.tier || '—'}</span>
+              <div className="rows">
+                <div className="acc-grid acc-head">
+                  <span>账号</span>
+                  <span className="r">今日消耗</span>
+                  <span className="r">昨日消耗</span>
+                  <span className="r">剩余额度</span>
+                  <span className="r">已用比例</span>
+                </div>
+                {accounts.map((a) => {
+                  const today = a.todayUsed ?? usedToday(a.history);
+                  const yesterday = dailyMap[dayKey(1)]?.accounts?.[a.id]?.total ?? usedYesterday(a.history);
+                  const pct = a.quota?.percentUsed != null ? a.quota.percentUsed : null;
+                  const isCurrent = a.id === currentId;
+                  return (
+                    <div key={a.id} className="acc-grid">
+                      <div className="usage-who">
+                        <Avatar name={a.name} id={a.id} size={32} />
+                        <b>{a.name}</b>
+                        {isCurrent && <span className="badge">当前</span>}
+                        <span className="hint">{a.quota?.plan?.tier || '—'}</span>
+                      </div>
+                      <b className="acc-num">{today != null ? fmtNum(today) : '—'}</b>
+                      <b className="acc-num dim">{yesterday != null ? fmtNum(yesterday) : '—'}</b>
+                      <b className="acc-num">{a.quota?.remaining != null ? fmtNum(a.quota.remaining) : '—'}</b>
+                      <b className="acc-num dim">{pct != null ? `${pct.toFixed(1)}%` : '—'}</b>
                     </div>
-                    <b className="acc-num">{today != null ? fmtNum(today) : '—'}</b>
-                    <b className="acc-num dim">{yesterday != null ? fmtNum(yesterday) : '—'}</b>
-                    <div className="acc-rem">
-                      <div className="model-bar"><div className="model-fill" style={{ width: pct != null ? `${pct}%` : '0%' }} /></div>
-                      <em className="usage-pct">{pct != null ? `剩${pct.toFixed(0)}%` : '—'}</em>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
             <p className="hint block">「今日消耗」为服务器实时口径（各活跃额度当日已用之和）；「昨日 / 近 7 天」来自按日聚合存档（daily.json），应用关闭期间的数据在下次启动后仍完整保留。本地历史共 {merged.points} 个采样点（每账号每 5 分钟一个）。</p>
           </section>

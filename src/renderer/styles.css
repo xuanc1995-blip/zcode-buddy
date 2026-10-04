@@ -575,10 +575,10 @@ body::before {
 
 /* 各账号用量：表格式布局（列头 + 数值右对齐成列）
    列定义必须用 minmax(0, Nfr)：1fr 的隐式最小值是内容宽度，列头行与数据行是两个独立 grid，
-   内容不同会导致轨道宽度不同、列头与数据错位（0.6.16 踩坑） */
+   内容不同会导致轨道宽度不同、列头与数据错位（0.6.16 踩坑）；数据列全部等宽 */
 .acc-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.35fr);
+  grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(0, 1fr));
   gap: 14px; align-items: center; padding: 12px 2px;
 }
 .acc-grid + .acc-grid { border-top: 1px solid var(--panel-line); }
