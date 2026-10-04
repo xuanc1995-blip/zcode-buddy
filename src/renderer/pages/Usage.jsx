@@ -164,7 +164,7 @@ export default function Usage({ state, accounts, settings, showToast }) {
                 </div>
               </div>
               <div className="rows">
-                <div className="row-gap" style={{ margin: '2px 2px 12px', flexWrap: 'wrap' }}>
+                <div className="sum-row">
                   {(() => {
                     const winSum = trend.reduce((s, d) => s + trendValue(d), 0);
                     let peak = trend[0];
