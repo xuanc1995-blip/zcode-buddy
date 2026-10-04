@@ -609,9 +609,10 @@ body::before {
 .acc-rem { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .acc-rem .model-bar { flex: 1; width: auto; min-width: 60px; height: 8px; }
 
-/* 每日消耗趋势：紧凑记录列表（日期 | 较前一日 | 消耗），最新在上 */
+/* 每日消耗趋势：紧凑记录列表（日期 | 较前一日 | 消耗），最新在上
+   三列等宽（与上方摘要 chips 的等分节奏一致），中间不再留大块空白 */
 .dtrend-grid {
-  display: grid; grid-template-columns: minmax(110px, auto) 1fr minmax(110px, auto);
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px; align-items: center; padding: 10px 2px;
 }
 .dtrend-grid + .dtrend-grid { border-top: 1px solid var(--panel-line); }
