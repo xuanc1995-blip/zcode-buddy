@@ -31,7 +31,6 @@ export default function Usage({ state, accounts, settings, showToast }) {
   const modelNames = Object.keys(Object.assign({}, ...trend.map((d) => d.models || {})));
   modelNames.sort((a, b) => (trend.reduce((s, d) => s + (d.models?.[b] || 0), 0)) - (trend.reduce((s, d) => s + (d.models?.[a] || 0), 0)));
   const trendValue = (d) => (trendModel === '__total__' ? (d.total || 0) : (d.models?.[trendModel] || 0));
-  const maxTrend = Math.max(...trend.map(trendValue), 1);
   // 概览卡：近 7 天合计（固定 7 天窗口，与趋势区的切换无关）
   const last7Sum = daily ? daily.days.slice(-7).reduce((s, d) => s + (d.total || 0), 0) : null;
 
@@ -166,13 +165,23 @@ export default function Usage({ state, accounts, settings, showToast }) {
                 </div>
               </div>
               <div className="rows">
-                {trend.map((d) => {
+                <div className="dtrend-grid dtrend-head">
+                  <span>日期</span><span>较前一日</span><span className="r">消耗</span>
+                </div>
+                {[...trend].reverse().map((d) => {
+                  const t = new Date(`${d.date}T00:00:00`);
+                  t.setDate(t.getDate() - 1);
+                  const p2 = (n) => String(n).padStart(2, '0');
+                  const prevKey = `${t.getFullYear()}-${p2(t.getMonth() + 1)}-${p2(t.getDate())}`;
+                  const prevDay = dailyMap[prevKey];
+                  const prevVal = prevDay ? (trendModel === '__total__' ? prevDay.total : (prevDay.models?.[trendModel] ?? 0)) : null;
                   const v = trendValue(d);
+                  const delta = prevVal != null && prevVal > 0 && v != null ? ((v - prevVal) / prevVal) * 100 : null;
                   return (
-                    <div key={d.date} className="usage-row" style={{ gridTemplateColumns: 'minmax(84px, auto) 1fr minmax(90px, auto)' }}>
+                    <div key={d.date} className="dtrend-grid">
                       <span className="hint">{d.date.slice(5).replace('-', '/')}{d.date === dayKey(0) ? '（今天）' : ''}</span>
-                      <div className="model-bar"><div className="model-fill" style={{ width: `${Math.max(2, (v / maxTrend) * 100)}%`, opacity: v > 0 ? 1 : 0.25 }} /></div>
-                      <em className="usage-pct" style={{ fontStyle: 'normal' }}>{fmtNum(v)}</em>
+                      <span className={`dtrend-delta ${delta == null ? '' : delta >= 0 ? 'up' : 'down'}`}>{delta == null ? '—' : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(1)}%`}</span>
+                      <b className="dtrend-val">{fmtNum(v)}</b>
                     </div>
                   );
                 })}

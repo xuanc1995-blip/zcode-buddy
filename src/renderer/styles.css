@@ -585,3 +585,16 @@ body::before {
 .acc-num { text-align: right; font-size: 12.5px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .acc-rem { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .acc-rem .model-bar { flex: 1; width: auto; min-width: 60px; height: 8px; }
+
+/* 每日消耗趋势：紧凑记录列表（日期 | 较前一日 | 消耗），最新在上 */
+.dtrend-grid {
+  display: grid; grid-template-columns: minmax(110px, auto) 1fr minmax(110px, auto);
+  gap: 14px; align-items: center; padding: 10px 2px;
+}
+.dtrend-grid + .dtrend-grid { border-top: 1px solid var(--panel-line); }
+.dtrend-head { padding: 0 2px 8px; font-size: 11.5px; color: var(--text-faint); border-bottom: 1px solid var(--panel-line); }
+.dtrend-head .r { text-align: right; }
+.dtrend-delta { font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.dtrend-delta.up { color: var(--warn); }
+.dtrend-delta.down { color: var(--ok); }
+.dtrend-val { text-align: right; font-size: 12.5px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
