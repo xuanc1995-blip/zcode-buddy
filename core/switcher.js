@@ -139,6 +139,18 @@ function restoreLast() {
   writeState({ credentials, config });
 }
 
+/** 读取 .last 备份（上次切换前的登录态）的账号指纹，用于「切回上次账号」。无备份返回 null */
+function readLastBackupFingerprint() {
+  try {
+    const { extractFrom } = require('./fingerprint');
+    const credentials = fs.readFileSync(path.join(BACKUP_DIR, 'credentials.json'), 'utf8');
+    const config = fs.readFileSync(path.join(BACKUP_DIR, 'config.json'), 'utf8');
+    return extractFrom(JSON.parse(credentials), JSON.parse(config));
+  } catch (_) {
+    return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 热切换：不关闭 ZCode 主窗口，只重启 agent 子进程
 //
@@ -243,6 +255,7 @@ module.exports = {
   applyState,
   rollback,
   hasLastBackup,
+  readLastBackupFingerprint,
   parseAgentOutput,
   listAgentProcesses,
   killProcessTree,

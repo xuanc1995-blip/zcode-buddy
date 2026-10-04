@@ -96,7 +96,7 @@ export default function SettingsPage({ state, settings, setSettings, busy, run, 
           <Row title="热切换" desc="切换时只重启 ZCode 的会话进程（agent）、不关主窗口；会话在下次使用时自动以新账号拉起，失败自动回退完整重启。关闭后始终走完整重启切换">
             <Toggle checked={!!draft.hotSwitch} onChange={(v) => save({ hotSwitch: v })} />
           </Row>
-          <Row title="全局快捷键" desc={<><kbd className="hotkey">Ctrl+Alt+1~9</kbd> 切到第 N 个账号，应用在后台也生效</>}>
+          <Row title="全局快捷键" desc={<><kbd className="hotkey">Ctrl+Alt+1~9</kbd> 切到第 N 个账号，<kbd className="hotkey">Ctrl+Alt+0</kbd> 切回上次账号，应用在后台也生效</>}>
             <Toggle checked={draft.globalHotkeys} onChange={(v) => save({ globalHotkeys: v })} />
           </Row>
         </div>

@@ -220,6 +220,15 @@ function checkLowQuotaAndNotify(results, settings) {
   notification.show();
 }
 
+/** 切回上次账号：目标为 .last 备份（上次切换前的登录态）对应的账号，走统一切换入口（含热切换/回退） */
+async function switchBackToLast() {
+  const fp = switcher.readLastBackupFingerprint();
+  if (!fp) throw new Error('没有可切回的上次账号（.last 备份不存在）');
+  const account = store.findAccount(fp.shortId);
+  if (!account) throw new Error('上次账号的快照不存在，无法切回');
+  return switchToId(account.id);
+}
+
 /** 托盘/通知共用的切换入口。mode='hot'|'full' 为单次覆盖（切换弹窗自选）；缺省跟随设置的热切换开关。失败/不可用自动回退完整切换 */
 async function switchToId(id, { mode } = {}) {
   if (loginInFlight) throw new Error('浏览器登录进行中，请等登录完成后再切换账号');
@@ -496,7 +505,7 @@ function effectiveTheme() {
   return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
 }
 
-/** 全局快捷键：Ctrl+Alt+1~9 切到第 N 个账号（按账号列表顺序） */
+/** 全局快捷键：Ctrl+Alt+1~9 切到第 N 个账号（按账号列表顺序），Ctrl+Alt+0 切回上次账号 */
 function applyGlobalHotkeys(enabled) {
   try { globalShortcut.unregisterAll(); } catch (_) {}
   if (!enabled) return;
@@ -505,6 +514,16 @@ function applyGlobalHotkeys(enabled) {
       globalShortcut.register(`CommandOrControl+Alt+${i + 1}`, () => switchToId(a.id).catch(() => {}));
     } catch (_) {}
   });
+  try {
+    globalShortcut.register('CommandOrControl+Alt+0', () => {
+      switchBackToLast().catch((e) => {
+        logActivity('switch-back', `切回上次账号失败：${e.message}`);
+        if (Notification.isSupported()) {
+          try { new Notification({ title: '无法切回上次账号', body: e.message }).show(); } catch (_) {}
+        }
+      });
+    });
+  } catch (_) {}
 }
 
 function broadcast(channel, payload) {
@@ -617,6 +636,11 @@ function createTray() {
     const current = fingerprint.extractCurrent();
     const menu = Menu.buildFromTemplate([
       { label: '打开 ZCode Buddy', click: showMainWindow },
+      { type: 'separator' },
+      ...(switcher.hasLastBackup() ? [{
+        label: '切回上次账号 (Ctrl+Alt+0)',
+        click: () => switchBackToLast().catch(() => {}),
+      }] : []),
       { type: 'separator' },
       ...accounts.map((a) => {
         const pct = a.quota && a.quota.percentUsed != null ? Math.max(0, Math.round(100 - a.quota.percentUsed)) : null;
