@@ -1,6 +1,6 @@
 {
   "name": "zcode-buddy",
-  "version": "0.6.28",
+  "version": "0.7.0",
   "description": "ZCode 多账号快捷切换与额度管理桌面工具 / Account switcher & quota dashboard for ZCode",
   "author": "zcode-buddy contributors",
   "license": "MIT",
