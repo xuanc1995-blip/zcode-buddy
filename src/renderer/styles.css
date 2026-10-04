@@ -201,6 +201,14 @@ body::before {
 }
 .eta-chip.warn { background: rgba(245, 166, 35, 0.13); color: var(--warn); border-color: transparent; }
 
+/* 趋势摘要 chips：合计/日均/峰值/最耗模型（短格式数字） */
+.sum-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px;
+  font-size: 11.5px; background: var(--panel); border: 1px solid var(--panel-line); color: var(--text-dim);
+}
+.sum-chip b { color: var(--text); font-variant-numeric: tabular-nums; }
+.badge.peak { background: var(--panel); border: 1px solid var(--panel-line); color: var(--text-dim); }
+
 /* 卡片/快捷卡入场动画 */
 .enter { animation: fadeUp .35s cubic-bezier(.22,.9,.35,1) both; }
 

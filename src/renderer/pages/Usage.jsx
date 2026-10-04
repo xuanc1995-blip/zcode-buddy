@@ -164,20 +164,25 @@ export default function Usage({ state, accounts, settings, showToast }) {
                 </div>
               </div>
               <div className="rows">
-                <p className="hint block" style={{ margin: '2px 2px 8px' }}>
+                <div className="row-gap" style={{ margin: '2px 2px 12px', flexWrap: 'wrap' }}>
                   {(() => {
                     const winSum = trend.reduce((s, d) => s + trendValue(d), 0);
-                    if (trend.length === 0 || winSum <= 0) return '暂无消耗记录';
-                    const winAvg = winSum / trend.length;
                     let peak = trend[0];
                     for (const d of trend) if (trendValue(d) > trendValue(peak)) peak = d;
-                    const peakTxt = `峰值 ${peak.date.slice(5).replace('-', '/')}${peak.date === dayKey(0) ? '（今天）' : ''} ${fmtNum(trendValue(peak))}`;
-                    const topModelTxt = trendModel === '__total__' && modelNames.length > 0
-                      ? `，最耗模型 ${modelNames[0]}（占 ${(trend.reduce((s, d) => s + (d.models?.[modelNames[0]] || 0), 0) / winSum * 100).toFixed(0)}%）`
-                      : '';
-                    return `近 ${trend.length} 天合计 ${fmtNum(winSum)}（日均 ${fmtNum(winAvg)}），${peakTxt}${topModelTxt}`;
+                    const fmtShort = (v) => (v == null ? '—' : (approxNum(v) || fmtNum(Math.round(v))));
+                    const chips = [
+                      { k: '合计', v: fmtShort(winSum) },
+                      { k: '日均', v: fmtShort(winSum / trend.length) },
+                      { k: '峰值', v: `${peak.date.slice(5).replace('-', '/')} ${fmtShort(trendValue(peak))}` },
+                    ];
+                    if (trendModel === '__total__' && modelNames.length > 0 && winSum > 0) {
+                      chips.push({ k: '最耗', v: `${modelNames[0]} ${(trend.reduce((s, d) => s + (d.models?.[modelNames[0]] || 0), 0) / winSum * 100).toFixed(0)}%` });
+                    }
+                    return chips.map(({ k, v }) => (
+                      <span key={k} className="sum-chip">{k} <b>{v}</b></span>
+                    ));
                   })()}
-                </p>
+                </div>
                 <div className="dtrend-grid dtrend-head">
                   <span>日期</span><span>较前一日</span><span className="r">消耗</span>
                 </div>
@@ -195,7 +200,7 @@ export default function Usage({ state, accounts, settings, showToast }) {
                     <div key={d.date} className="dtrend-grid">
                       <span className="hint" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                         {d.date.slice(5).replace('-', '/')}{d.date === dayKey(0) ? '（今天）' : ''}
-                        {isPeak && <span className="badge">峰值</span>}
+                        {isPeak && <span className="badge peak">峰值</span>}
                       </span>
                       <span className={`dtrend-delta ${delta == null ? '' : delta >= 0 ? 'up' : 'down'}`}>{delta == null ? '—' : `${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta).toFixed(1)}%`}</span>
                       <b className="dtrend-val">{fmtNum(v)}</b>
