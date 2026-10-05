@@ -214,6 +214,14 @@ body::before {
 .sum-chip b { color: var(--text); font-variant-numeric: tabular-nums; }
 .badge.peak { background: var(--panel); border: 1px solid var(--panel-line); color: var(--text-dim); }
 
+/* 应用入场动画：每次窗口加载一次性播放（侧栏左滑入、主区上浮） */
+.app-enter .sidebar { animation: enterLeft 0.4s cubic-bezier(0.22, 0.9, 0.36, 1) both; }
+.app-enter .main-col { animation: enterUp 0.44s cubic-bezier(0.22, 0.9, 0.36, 1) both; }
+.app-enter .brand, .app-enter .sidebar-foot { animation: fadeIn 0.5s ease 0.12s both; }
+@keyframes enterLeft { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+@keyframes enterUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
 /* 卡片/快捷卡入场动画 */
 .enter { animation: fadeUp .35s cubic-bezier(.22,.9,.35,1) both; }
 

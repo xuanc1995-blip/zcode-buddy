@@ -88,7 +88,7 @@ export default function App() {
   const ctx = { state, accounts, settings, busy, run, showToast, setConfirm, setSettings, reload, goPage: setPage };
 
   return (
-    <div className="shell">
+    <div className="shell app-enter">
       <aside className="sidebar">
         <div className="brand">
           <span className="logo"><IconZap size={22} /></span>

@@ -533,6 +533,55 @@ function broadcast(channel, payload) {
 }
 
 // ---------------------------------------------------------------------------
+// 启动闪屏：先展示品牌动画，主窗口就绪后淡出闪屏、渐显主窗
+// ---------------------------------------------------------------------------
+let splash = null;
+let splashShownAt = 0;
+const SPLASH_MIN_MS = 1500; // 最短展示时长，保证入场动画完整
+
+function createSplash() {
+  splash = new BrowserWindow({
+    width: 460, height: 336, frame: false, transparent: true, resizable: false,
+    skipTaskbar: true, alwaysOnTop: true, show: false, focusable: false,
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
+  });
+  splash.loadFile(path.join(__dirname, 'splash.html'));
+  splash.once('ready-to-show', () => {
+    splashShownAt = Date.now();
+    splash.showInactive(); // 不抢主窗口焦点
+  });
+}
+
+function closeSplash() {
+  if (!splash || splash.isDestroyed()) { splash = null; return; }
+  try { splash.webContents.executeJavaScript('document.getElementById("card").classList.add("bye")').catch(() => {}); } catch (_) {}
+  const s = splash;
+  splash = null;
+  setTimeout(() => { try { s.destroy(); } catch (_) {} }, 240);
+}
+
+/** 主窗口就绪后的呈现：等够闪屏最短时长 → 淡出闪屏 → 渐显主窗 */
+function revealMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const wait = Math.max(0, SPLASH_MIN_MS - (Date.now() - splashShownAt));
+  setTimeout(() => {
+    closeSplash();
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.show();
+    try {
+      mainWindow.setOpacity(0);
+      let o = 0;
+      const t = setInterval(() => {
+        if (!mainWindow || mainWindow.isDestroyed()) { clearInterval(t); return; }
+        o += 0.14;
+        if (o >= 1) { mainWindow.setOpacity(1); clearInterval(t); }
+        else mainWindow.setOpacity(o);
+      }, 16);
+    } catch (_) { mainWindow.setOpacity(1); }
+  }, wait);
+}
+
+// ---------------------------------------------------------------------------
 // 窗口与托盘
 // ---------------------------------------------------------------------------
 function showMainWindow() {
@@ -550,10 +599,11 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: saved.windowBounds?.width ?? 1060,
     height: saved.windowBounds?.height ?? 700,
-    x: saved.windowBounds?.x,
-    y: saved.windowBounds?.y,
+    // 启动时自动居中（不恢复 x/y 坐标），仅记忆窗口大小
+    center: true,
     minWidth: 880,
     minHeight: 580,
+    show: false, // 就绪后再渐显，避免白屏闪烁
     autoHideMenuBar: true,
     backgroundColor: currentTransparent ? '#00000000' : '#101014',
     transparent: currentTransparent,
@@ -584,6 +634,12 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   }
+
+  // 就绪后呈现（等闪屏最短时长），加 5 秒兜底防止加载异常时无窗口
+  mainWindow.once('ready-to-show', () => revealMainWindow());
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) revealMainWindow();
+  }, 5000);
 
   // 安全防护：外链走系统浏览器（target=_blank 不再新开 Electron 窗口），SPA 内禁止页面导航
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -695,6 +751,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
+    createSplash(); // 先展示品牌闪屏，主窗口就绪后交接
     registerIpc();
     createWindow();
     createTray();
