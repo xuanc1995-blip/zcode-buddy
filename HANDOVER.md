@@ -19,13 +19,15 @@
 
 | 事项 | 状态 |
 |---|---|
-| git 同步 | master 已推送 origin/main（2026-10-03），v0.5.0~v0.5.16 **逐版本打 tag**（v0.5.12 含 2 个提交、v0.5.16 含 2 个提交，其余一提交一版本） |
+| git 同步 | master 与 origin/main 同步（持续发版中）；v0.5.0~v0.7.1 **逐版本打 tag**（多数一提交一版本，v0.5.12/v0.5.16/v0.7.0 等含 2 提交） |
 | GitHub 仓库 | https://github.com/xuanc1995-blip/zcode-buddy （公开、MIT、描述/topics 已配置） |
-| Release | **v0.5.0~v0.5.16 已逐版本发布**：tag 推送触发 CI 构建 NSIS+portable 并挂到 Release（`generate_release_notes` 自动生成说明）；v0.4.1 及更早为手工发布 |
-| 发布流程 | 打 tag（如 `v0.5.17`）→ GitHub Actions 自动构建 NSIS+portable 并挂到 Release（`.github/workflows/release.yml`）；发版前记得补 CHANGELOG.md |
+| Release | **v0.5.0~v0.7.1 全部发布**（Latest=v0.7.1）：tag 推送触发 CI（先跑 npm test 再构建 NSIS+portable，生成 latest.yml 支持应用内更新）挂到 Release；CI 生成说明为 compare 链接，用 `gh release edit` 补标题与说明 |
+| 发布流程 | **推荐 `npm run release X.Y.Z`**（scripts/release.mjs：版本号→提交→tag 单推→推送重试→盯 CI）；发版前补 CHANGELOG.md 并同步本文档头部版本行；⚠ 新版本号必须 **≥ Latest 的 semver**（0.6.29 曾误发回退版本号，已撤） |
 | gh CLI 账号 | 双账号：**xuanc1995-blip（active，发布用）**、daxieba（inactive）。设备流程登录（client_id `178c6fc778ccc68e1d6a`）。推送如遇 403，确认活动账号：`gh api user --jq .login` |
 
-**下次发版流程**：① 补 `CHANGELOG.md`；② `npm run build:renderer` + 本地验收；③ 提交推送 `git push origin master:main`；④ `git tag vX.Y.Z && git push --tags` 触发 CI；⑤ 可选：把仓库关联到用户的 Projects 看板 `users/xuanc1995-blip/projects/1`（需 token 有 `read:project` scope，当前没有）。
+**下次发版流程**：① 补 `CHANGELOG.md` + 同步本文档**头部版本行**（易漏！）；② `npm test` + `npm run build:renderer` + 本地验收；③ `npm run release X.Y.Z` 一条龙（自动校验 semver ≥ Latest、tag 单推触发 CI、推送重试、盯构建）；④ 网络中断致推送失败时按脚本提示手动补推，用 `git ls-remote --tags` 验证真伪；⑤ 可选：把仓库关联到用户的 Projects 看板 `users/xuanc1995-blip/projects/1`（需 token 有 `read:project` scope，当前没有）。
+
+**版本史速览（2026-10-03 ~ 10-04）**：v0.5.0~v0.5.16 实验批上云（侧栏 6 页/用量统计/操作记录）→ v0.6.0~v0.6.28 快速迭代（热切换默认开与按次选完整重启、浏览器登录添加、历史登录态自动捕捉、可撑天数预测、自动更新、按模型每日聚合、安全加固、UI 全面梳理，过程版本详见 Releases）→ v0.7.0 里程碑（README 重写、切回上次账号）→ v0.7.1（启动动画 + 启动居中；其前身的 0.6.29 误发已撤回）。**当前稳定基线 v0.7.1**。
 
 ## 三、架构与目录
 
@@ -45,8 +47,9 @@ electron/
   main.cjs            # 主进程：窗口/托盘/IPC/轮询提醒/自绘窗口键/全局快捷键
   updater.cjs         # 自动更新（electron-updater + GitHub Releases，安装版专用）
   preload.cjs         # contextBridge API
+  splash.html         # 启动闪屏（品牌动画+功能展示，主窗就绪后淡出交接）
 src/renderer/         # React UI（App + pages/{Dashboard,Accounts,Usage,Settings,About}；侧栏 5 项）
-scripts/              # gen-icon.js（纯 Node 图标光栅化）、add-shortcut.ps1、release.mjs（发版一条龙）
+scripts/              # gen-icon.js（纯 Node 图标光栅化）、add-shortcut.ps1、release.mjs（发版一条龙）、run-tests.cjs（测试启动器，兼容 CI Node20 与本机 Node24）
 tests/core/           # 单元测试（node:test，npm test）——不发网络请求、不碰真实登录态
 build/icon.png        # 应用图标（1024，electron-builder 自动生成 ico）
 dist/                 # vite 构建产物（gitignore）
@@ -66,6 +69,8 @@ accounts/             # 账号快照（含明文凭证！已 gitignore，严禁�
 - **浏览器登录添加账号**：复用官方 CLI `zcode.cjs login --json`（spawn 方式同 app-server：ZCode.exe + `ELECTRON_RUN_AS_NODE=1`）。CLI 自己完成浏览器授权（/oauth/cli/{init,poll}）并写同一份 `~/.zcode/v2` 登录态，stdout 输出 `{status:"ready", user, credentialsPath, configPath}`；Buddy 随后照常 captureCurrent。实现见 `core/autologin.js`
 - **快照凭证保活**：pollQuotaOnce 每轮调用 syncCurrentAccountSnapshot()，当前账号的活体凭证与快照不一致（客户端轮换 token）时自动 captureCurrent 同步，减少「过期」。
 - **历史登录态自动捕捉**：`login-state.json`（userData）记录 lastShortId；启动与每轮轮询时 `checkLoginStateChange()` 对比当前指纹，变化则记录事件并自动 captureCurrent（source:'auto'，可关）。快照字段 source 区分来源（manual/auto/login）。注意：检测依赖 Buddy 运行，Buddy 未运行期间发生的登录变化在其下次启动时补捉
+- **快速切回上次账号（v0.7.0）**：`switcher.readLastBackupFingerprint()` 读 `.last/` 备份的账号指纹 → 定位快照 → 走统一切换入口（含热切换/回退）；入口为 `Ctrl+Alt+0` 全局快捷键与托盘菜单项「切回上次账号」；无备份/快照缺失时报错提示
+- **启动动画与启动居中（v0.6.29）**：`electron/splash.html` 闪屏先展示（`showInactive` 不抢焦点）；主窗 `show:false` + `center:true`（启动自动居中，**不再恢复 x/y，仅记忆大小**），ready-to-show 后等够 `SPLASH_MIN_MS=1500` → 闪屏加 `.bye` 淡出 → 主窗 show + `setOpacity` 0→1 渐显；5 秒兜底强制呈现。透明度跨 0 重建窗口也走同一渐显流程
 - `credentials.json` 中敏感字段是 `enc:v1` 加密：aes-256-gcm，key = sha256(`zcode-credential-fallback:<platform>:<homedir>:<username>`)。解密仅用于指纹与额度查询；快照因此**仅限本机使用**
 
 ### 2. 额度接口（core/quota.js）
@@ -82,6 +87,7 @@ accounts/             # 账号快照（含明文凭证！已 gitignore，严禁�
 - **每日聚合（v0.6.0 起）**：saveQuota 时把当日 used 求和落盘 `daily.json`（数据目录根，与 accounts/ 同级，保留 120 天）；「昨日消耗」「近 7 天」读这里，不再依赖应用连续在线。某天有记录 = 当天至少轮询过一次（应用全天没跑则该天无数据，这是采样口径的天限）
 
 ### 4. 其他
+- **账号 id 白名单（v0.6.14 安全加固）**：id 拼快照路径前强制 `^[A-Za-z0-9_-]{1,64}$` 校验（rename/delete/写入与备份导入），杜绝目录穿越；快照与 daily.json 均为 tmp+rename **原子写**；窗口 `setWindowOpenHandler` 外链走系统浏览器 + `will-navigate` 已拦截
 - ZCode.exe 可能装在非标准路径：`findZCodeExe()` 有运行中进程反查兜底（PowerShell Get-Process）
 - `execSync`（tasklist/taskkill）**必须带 timeout**（现 5 秒）：WMI 拥塞时会无限挂起并冻结主进程事件循环
 - 自绘窗口控制键（弃用系统 titleBarOverlay）：overlay 在深色/透明模式下颜色不可控
@@ -108,6 +114,7 @@ node scripts/add-shortcut.ps1   # 重建桌面快捷方式
 - **操作记录页已移除（v0.6.11）**：登录相关事件在账号管理页「登录历史」面板展示（读 activity.jsonl）；底层记录仍保留（最近 500 条自动截断，activity:clear 接口已随页面一并移除）
 - 「昨日消耗」需要历史覆盖昨日（历史约 48 小时 + 应用需在运行轮询），刚装前两天数据不全属正常
 - one_time 额度若当日中途续期，续期前的消耗计入当日（used 随续期清零后只统计续期后的）——与用户观察口径一致
+- **剩余额度/已用比例 ≠ 100% − 今日消耗比例**：账号可能同时持有每日额度（每日清零）与一次性包（不清零），两套口径合算是服务器实时值，不互为补数属正常
 - 快照含明文凭证且与机器绑定（enc:v1），跨机器需走「导出/导入备份」
 - 浅色主题下模型进度条曾因 Chromium button 子元素不拉伸塌陷——现已用显式宽度修复，改动相关布局时注意
 - 账号顺序 = 名称中数字升序（01→02→03），全局快捷键 Ctrl+Alt+N 与此对应
